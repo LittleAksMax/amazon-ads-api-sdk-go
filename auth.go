@@ -3,11 +3,10 @@ package amazon_ads_api_go_sdk
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"net/url"
+	url2 "net/url"
 	"strconv"
 )
 
@@ -31,18 +30,26 @@ type AmazonAPITokenResponse struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
+type Client interface {
+	refreshToken(refreshToken string) (*AmazonAPITokenResponse, error)
+}
+
 func (authClient *AmazonAPIAuthClient) refreshToken(refreshToken string) (*AmazonAPITokenResponse, error) {
-	queryValues := url.Values{
+	queryValues := url2.Values{
 		"client_id":     []string{authClient.clientID},
 		"client_secret": []string{authClient.clientSecret},
 		"refresh_token": []string{refreshToken},
 		"grant_type":    []string{"refresh_token"},
 	}
 
-	//augmentedURL := fmt.Sprintf("%s%s?%s", authClient.regionURL, "/auth/o2/token", queryValues.Encode())
-	augmentedURL := fmt.Sprintf("%s%s?%s", "https://api.amazon.co.uk", "/auth/o2/token", queryValues.Encode())
-	log.Println(augmentedURL)
-	req, err := http.NewRequest(http.MethodPost, augmentedURL, nil)
+	url := url2.URL{
+		Scheme:   "https",
+		Host:     authClient.regionURL,
+		Path:     "auth/o2/token",
+		RawQuery: queryValues.Encode(),
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url.String(), nil)
 	if err != nil {
 		return nil, err
 	}

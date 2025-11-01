@@ -1,13 +1,12 @@
 package amazon_ads_api_go_sdk
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
+	url2 "net/url"
 	"time"
 
 	"github.com/LittleAksMax/amazon-ads-api-go-sdk/models"
@@ -50,30 +49,28 @@ func (aac *AmazonAdsAPIClient) setToken() error {
 	return nil
 }
 
-func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context) ([]models.Profile, error) {
+func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.ListProfilesOptions) ([]models.Profile, error) {
 	err := aac.setToken()
 	if err != nil {
 		return nil, err
 	}
 
-	log.Println(aac.accessToken)
-	log.Println(aac.refreshToken)
-
-	url := "https://advertising-api.amazon.com/v2/profiles"
-	body := map[string]string{
-		"Authorization":                   "bearer " + aac.accessToken,
-		"Amazon-Advertising-API-ClientId": aac.authClient.clientID,
+	url := url2.URL{
+		Scheme: "https",
+		Host:   aac.regionURL,
+		Path:   "v2/profiles",
+	}
+	if options != nil {
+		url.RawQuery = options.ToQuery().Encode()
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		return nil, err
-	}
-	defer req.Body.Close()
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+aac.accessToken)
+	req.Header.Set("Amazon-Advertising-API-ClientId", aac.authClient.clientID)
 
 	client := &http.Client{}
 	res, err := client.Do(req)
@@ -84,12 +81,15 @@ func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context) ([]models.Profil
 		return nil, errors.New(res.Status)
 	}
 	defer res.Body.Close()
-	bodyBytes, err = io.ReadAll(res.Body)
+	bodyBytes, err := io.ReadAll(res.Body)
 
-	bodyString := string(bodyBytes)
-	log.Println(bodyString)
+	var profiles []models.Profile
+	err = json.Unmarshal(bodyBytes, &profiles)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, errors.New("not implemented")
+	return profiles, nil
 }
 
 func NewAmazonAdsAPIClient(authClient *AmazonAPIAuthClient, region string) (*AmazonAdsAPIClient, error) {

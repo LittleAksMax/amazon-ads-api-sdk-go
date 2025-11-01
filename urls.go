@@ -9,9 +9,9 @@ var amazonAdsApiRegionURLs = struct {
 	Europe       string
 	FarEast      string
 }{
-	NorthAmerica: "https://advertising-api.amazon.com",
-	Europe:       "https://advertising-api-eu.amazon.com",
-	FarEast:      "https://advertising-api-fe.amazon.com",
+	NorthAmerica: "advertising-api.amazon.com",
+	Europe:       "advertising-api-eu.amazon.com",
+	FarEast:      "advertising-api-fe.amazon.com",
 }
 
 var amazonAdsApiRegionToURLMap = map[string]string{
@@ -29,9 +29,9 @@ var amazonAuthApiRegionURLs = struct {
 	Europe       string
 	FarEast      string
 }{
-	NorthAmerica: "https://api.amazon.com",
-	Europe:       "https://api.amazon.co.uk",
-	FarEast:      "https://api.amazon.co.jp",
+	NorthAmerica: "api.amazon.com",
+	Europe:       "api.amazon.co.uk",
+	FarEast:      "api.amazon.co.jp",
 }
 
 var amazonAuthApiRegionToURLMap = map[string]string{

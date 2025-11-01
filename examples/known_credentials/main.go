@@ -79,6 +79,6 @@ func main() {
 	log.Println(refreshToken.Get())
 	client.SetRefreshToken(refreshToken.Get())
 
-	profs, err := client.GetProfiles(context.Background())
+	profs, err := client.GetProfiles(context.Background(), nil)
 	log.Println(len(profs))
 }
