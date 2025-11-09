@@ -9,7 +9,7 @@ import (
 	url2 "net/url"
 	"time"
 
-	"github.com/LittleAksMax/amazon-ads-api-go-sdk/models"
+	"github.com/LittleAksMax/amazon-ads-api-sdk-go/models"
 )
 
 type AmazonAdsAPIClient struct {

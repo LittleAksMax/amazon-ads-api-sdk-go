@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	sdk "github.com/LittleAksMax/amazon-ads-api-go-sdk"
+	sdk "github.com/LittleAksMax/amazon-ads-api-sdk-go"
 	"github.com/joho/godotenv"
 )
 

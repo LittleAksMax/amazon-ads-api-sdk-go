@@ -1,6 +1,6 @@
-module github.com/LittleAksMax/amazon-ads-api-go-sdk
+module github.com/LittleAksMax/amazon-ads-api-sdk-go
 
-replace github.com/LittleAksMax/amazon-ads-api-go-sdk => .
+replace github.com/LittleAksMax/amazon-ads-api-sdk-go => .
 
 go 1.21.5
 
