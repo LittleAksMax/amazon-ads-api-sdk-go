@@ -22,7 +22,7 @@ var AmazonCountryToRegionMap = map[string]string{
 	"ES": AmazonRegions.Europe,
 	"FR": AmazonRegions.Europe,
 	"BE": AmazonRegions.Europe,
-	"GB": AmazonRegions.Europe,
+	"UK": AmazonRegions.Europe,
 	"IN": AmazonRegions.Europe,
 	"IT": AmazonRegions.Europe,
 	"NL": AmazonRegions.Europe,
