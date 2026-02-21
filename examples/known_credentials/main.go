@@ -8,6 +8,7 @@ import (
 	"os"
 
 	sdk "github.com/LittleAksMax/amazon-ads-api-sdk-go"
+	"github.com/LittleAksMax/amazon-ads-api-sdk-go/models"
 	"github.com/joho/godotenv"
 )
 
@@ -29,13 +30,20 @@ func (rft *RefreshToken) Get() string {
 
 	req.Header.Set("X-Api-Key", os.Getenv("REFRESH_TOKEN_URI_ACCESS_KEY"))
 	res, err := client.Do(req)
+	defer func(res *http.Response) {
+		if res != nil {
+			err := res.Body.Close()
+			if err != nil {
+				log.Printf("failed to close response body: %v", err)
+			}
+		}
+	}(res)
 	if err != nil {
 		return ""
 	}
 	if res.StatusCode != http.StatusOK {
 		return ""
 	}
-	defer res.Body.Close()
 
 	target := struct {
 		RefreshToken string `json:"refresh_token"`
@@ -55,6 +63,8 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+
+	ctx := context.Background()
 
 	refreshToken := RefreshToken{}
 
@@ -79,6 +89,44 @@ func main() {
 	log.Println(refreshToken.Get())
 	client.SetRefreshToken(refreshToken.Get())
 
-	profs, err := client.GetProfiles(context.Background(), nil)
+	profs, err := client.GetProfiles(ctx, nil)
 	log.Println(len(profs))
+
+	for _, prof := range profs {
+		// Example: Filter for only Sponsored Products campaigns that are enabled
+		campaignOptions := &models.ListCampaignsOptions{
+			AdProductFilter: models.Filter{
+				Include: []string{models.AdProductFilterSP},
+			},
+			StateFilter: &models.Filter{
+				Include: []string{models.CampaignStateEnabled},
+			},
+		}
+
+		camps, err := client.GetCampaigns(ctx, prof.ProfileID, campaignOptions)
+		if err != nil {
+			log.Printf("Error fetching campaigns for profile %d: %v", prof.ProfileID, err)
+			continue
+		}
+		log.Printf("Profile: %d -> %d campaigns\n", prof.ProfileID, len(camps))
+
+		for _, camp := range camps {
+			adgroups, err := client.GetAdGroups(ctx, prof.ProfileID, &models.ListAdGroupsOptions{
+				AdProductFilter: models.Filter{
+					Include: []string{models.AdProductFilterSP},
+				},
+				CampaignIDFilter: &models.Filter{
+					Include: []string{camp.CampaignID},
+				},
+				StateFilter: &models.Filter{
+					Include: []string{models.AdGroupStateEnabled},
+				},
+			})
+			if err != nil {
+				log.Printf("Error fetching AdGroups for campaign %s/profile %d: %v", camp.CampaignID, prof.ProfileID, err)
+			}
+			log.Printf("Profile %d -> Campaign %s -> %d AdGroups\n", prof.ProfileID, camp.CampaignID, len(adgroups))
+		}
+	}
+
 }

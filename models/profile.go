@@ -2,7 +2,6 @@ package models
 
 import (
 	url2 "net/url"
-	"strings"
 )
 
 /*
@@ -44,27 +43,12 @@ type ProfileAccountInfo struct {
 }
 
 type ListProfilesOptions struct {
-	ApiProgram               string   // "billing", "campaign", "paymentMethod", "store", "report", "account", "posts" -- default is "campaign"
-	AccessLevel              string   // "view", "edit" -- default is "edit"
-	ProfileTypeFilter        []string // choice of "seller", "vendor", "agency" -- default is all
-	ValidPaymentMethodFilter string   // "true", "false" -- default is all
+	ApiProgram               string   `query:"apiProgram"`               // "billing", "campaign", "paymentMethod", "store", "report", "account", "posts" -- default is "campaign"
+	AccessLevel              string   `query:"accessLevel"`              // "view", "edit" -- default is "edit"
+	ProfileTypeFilter        []string `query:"profileTypeFilter"`        // choice of "seller", "vendor", "agency" -- default is all
+	ValidPaymentMethodFilter string   `query:"validPaymentMethodFilter"` // "true", "false" -- default is all
 }
 
 func (lpo *ListProfilesOptions) ToQuery() url2.Values {
-	queryParameters := url2.Values{}
-
-	if lpo.ApiProgram != "" {
-		queryParameters.Add("apiProgram", lpo.ApiProgram)
-	}
-	if lpo.AccessLevel != "" {
-		queryParameters.Add("accessLevel", lpo.AccessLevel)
-	}
-	if lpo.ProfileTypeFilter != nil {
-		// We have to make the comma separated list ourselves unfortunately
-		queryParameters.Add("profileTypeFilter", strings.Join(lpo.ProfileTypeFilter, ","))
-	}
-	if lpo.ValidPaymentMethodFilter != "" {
-		queryParameters.Add("validPaymentMethodFilter", lpo.ValidPaymentMethodFilter)
-	}
-	return queryParameters
+	return toQueryValues(lpo)
 }
