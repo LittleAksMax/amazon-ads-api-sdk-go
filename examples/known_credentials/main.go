@@ -99,7 +99,7 @@ func main() {
 				Include: []string{models.AdProductFilterSP},
 			},
 			StateFilter: &models.Filter{
-				Include: []string{models.CampaignStateEnabled},
+				Include: []string{models.StateEnabled},
 			},
 		}
 
@@ -119,13 +119,33 @@ func main() {
 					Include: []string{camp.CampaignID},
 				},
 				StateFilter: &models.Filter{
-					Include: []string{models.AdGroupStateEnabled},
+					Include: []string{models.StateEnabled},
 				},
 			})
 			if err != nil {
 				log.Printf("Error fetching AdGroups for campaign %s/profile %d: %v", camp.CampaignID, prof.ProfileID, err)
 			}
 			log.Printf("Profile %d -> Campaign %s -> %d AdGroups\n", prof.ProfileID, camp.CampaignID, len(adgroups))
+			for _, adgroup := range adgroups {
+				ads, err := client.GetAds(ctx, prof.ProfileID, &models.ListAdsOptions{
+					AdProductFilter: models.Filter{
+						Include: []string{models.AdProductFilterSP},
+					},
+					CampaignIDFilter: &models.Filter{
+						Include: []string{camp.CampaignID},
+					},
+					AdGroupIDFilter: &models.Filter{
+						Include: []string{adgroup.AdGroupID},
+					},
+					StateFilter: &models.Filter{
+						Include: []string{models.StateEnabled},
+					},
+				})
+				if err != nil {
+					log.Printf("Error fetching Ads for AdGroup %s/Campaign %s/profile %d: %v", adgroup.AdGroupID, camp.CampaignID, prof.ProfileID, err)
+				}
+				log.Printf("Profile %d -> Campaign %s -> AdGroup %s -> %d Ads\n", prof.ProfileID, camp.CampaignID, adgroup.AdGroupID, len(ads))
+			}
 		}
 	}
 

@@ -239,3 +239,50 @@ func (aac *AmazonAdsAPIClient) GetAdGroups(ctx context.Context, profileID int64,
 
 	return response.AdGroups, nil
 }
+
+func (aac *AmazonAdsAPIClient) GetAds(ctx context.Context, profileID int64, options *models.ListAdsOptions) ([]models.Ad, error) {
+	err := aac.setToken()
+	if err != nil {
+		return nil, err
+	}
+
+	url := url2.URL{
+		Scheme: "https",
+		Host:   aac.regionURL,
+		Path:   "adsApi/v1/query/ads",
+	}
+
+	// Build request body using the generic toJSONBodyOptions
+	var requestBody []byte
+	if options != nil {
+		bodyMap := options.ToJSON()
+		requestBody, err = json.Marshal(bodyMap)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		requestBody = nil
+	}
+
+	headers := map[string]string{
+		"Accept":                       "application/json",
+		"Content-Type":                 "application/json",
+		"Amazon-Advertising-API-Scope": strconv.FormatInt(profileID, 10),
+	}
+
+	bodyBytes, err := aac.doRequest(ctx, http.MethodPost, url.String(), requestBody, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	// The API returns ads wrapped in an "ads" key
+	var response struct {
+		Ads []models.Ad `json:"ads"`
+	}
+	err = json.Unmarshal(bodyBytes, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.Ads, nil
+}

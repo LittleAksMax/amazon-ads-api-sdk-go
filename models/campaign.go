@@ -6,10 +6,6 @@ const (
 	AdProductFilterSD  = "SPONSORED_DISPLAY"
 	AdProductFilterSP  = "SPONSORED_PRODUCTS"
 	AdProductFilterST  = "SPONSORED_TELEVISION"
-
-	CampaignStateEnabled  = "ENABLED"
-	CampaignStateArchived = "ARCHIVED"
-	CampaignStatePaused   = "PAUSED"
 )
 
 type ListCampaignsOptions struct {
@@ -53,25 +49,6 @@ type Campaign struct {
 type CampaignStatus struct {
 	DeliveryStatus  string   `json:"deliveryStatus"`
 	DeliveryReasons []string `json:"deliveryReasons"`
-}
-
-type Budget struct {
-	BudgetType           string       `json:"budgetType"`
-	BudgetValue          *BudgetValue `json:"budgetValue"`
-	RecurrenceTimePeriod string       `json:"recurrenceTimePeriod"`
-}
-
-type BudgetValue struct {
-	MonetaryBudgetValue *MonetaryBudgetValue `json:"monetaryBudgetValue"`
-}
-
-type MonetaryBudgetValue struct {
-	MonetaryBudget *MonetaryBudget `json:"monetaryBudget"`
-}
-
-type MonetaryBudget struct {
-	CurrencyCode string  `json:"currencyCode"`
-	Value        float64 `json:"value"`
 }
 
 type CampaignOptimizations struct {
