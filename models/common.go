@@ -56,3 +56,13 @@ type Tag struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
+
+type DateTimeFields struct {
+	StartDateTime *string `json:"startDateTime"`
+	EndDateTime   *string `json:"endDateTime"`
+}
+
+type MarketplaceFields struct {
+	MarketplaceScope *string  `json:"marketplaceScope"`
+	Marketplaces     []string `json:"marketplaces"`
+}

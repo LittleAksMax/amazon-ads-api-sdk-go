@@ -1,116 +1,81 @@
 package amazon_ads_api_go_sdk
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	url2 "net/url"
-	"strconv"
-	"time"
 
 	"github.com/LittleAksMax/amazon-ads-api-sdk-go/models"
 )
 
+// AmazonAdsAPIClient manages communication with the Amazon Ads API
 type AmazonAdsAPIClient struct {
-	regionURL    string
-	authClient   *AmazonAPIAuthClient
-	accessToken  string
-	refreshToken string
-	expiresAt    time.Time
+	cfg    *Configuration
+	common service // Reuse a single struct instead of allocating one for each service on the heap
+
+	// API Services
+	CampaignsService *CampaignsService
+	AdGroupsService  *AdGroupsService
+	AdsService       *AdsService
+}
+
+type service struct {
+	client *AmazonAdsAPIClient
+}
+
+type Configuration struct {
+	AuthClient *AmazonAPIAuthClient
+	Region     string
+	HTTPClient *http.Client
+	regionURL  string
+}
+
+// NewAmazonAdsAPIClient creates a new API client
+func NewAmazonAdsAPIClient(cfg *Configuration) (*AmazonAdsAPIClient, error) {
+	if cfg.HTTPClient == nil {
+		cfg.HTTPClient = &http.Client{}
+	}
+
+	regionURL, ok := amazonAdsApiRegionToURLMap[cfg.Region]
+	if !ok {
+		return nil, errors.New("invalid region: " + cfg.Region)
+	}
+
+	c := &AmazonAdsAPIClient{
+		cfg: cfg,
+	}
+	c.cfg.regionURL = regionURL
+	c.common.client = c
+
+	// Initialise API Services - cast common service to each service type
+	c.CampaignsService = (*CampaignsService)(&c.common)
+	c.AdGroupsService = (*AdGroupsService)(&c.common)
+	c.AdsService = (*AdsService)(&c.common)
+
+	return c, nil
 }
 
 func (aac *AmazonAdsAPIClient) SetRefreshToken(refreshToken string) {
-	aac.refreshToken = refreshToken
+	aac.cfg.AuthClient.SetRefreshToken(refreshToken)
 }
 
 func (aac *AmazonAdsAPIClient) isAccessTokenValid() bool {
-	return aac.accessToken != "" && time.Now().UTC().Before(aac.expiresAt.UTC())
+	return aac.cfg.AuthClient.isAccessTokenValid()
 }
 
 func (aac *AmazonAdsAPIClient) setAccessCredentials(tok *AmazonAPITokenResponse) {
-	aac.accessToken = tok.AccessToken
-	aac.refreshToken = tok.RefreshToken
-	aac.expiresAt = time.Now().Add(time.Duration(tok.ExpiresIn) * time.Second)
+	aac.cfg.AuthClient.setAccessCredentials(tok)
 }
 
 func (aac *AmazonAdsAPIClient) setToken() error {
-	// We already have a valid token
-	if aac.isAccessTokenValid() {
-		return nil
-	}
-
-	tok, err := aac.authClient.refreshToken(aac.refreshToken)
-	if err != nil {
-		return err
-	}
-	aac.setAccessCredentials(tok)
-
-	return nil
+	return aac.cfg.AuthClient.setToken()
 }
 
-func NewAmazonAdsAPIClient(authClient *AmazonAPIAuthClient, region string) (*AmazonAdsAPIClient, error) {
-	regionURL, ok := amazonAdsApiRegionToURLMap[region]
-	if !ok {
-		return nil, errors.New("invalid region: " + region)
-	}
-
-	return &AmazonAdsAPIClient{
-		authClient: authClient,
-		regionURL:  regionURL,
-	}, nil
-}
-
-// doRequest executes an HTTP request and returns the response body
-func (aac *AmazonAdsAPIClient) doRequest(ctx context.Context, method, urlStr string, body []byte, headers map[string]string) ([]byte, error) {
-	var bodyReader io.Reader
-	if body != nil {
-		bodyReader = bytes.NewReader(body)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, method, urlStr, bodyReader)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set common headers
-	req.Header.Set("Authorization", "Bearer "+aac.accessToken)
-	// Use direct assignment to preserve exact casing for Amazon-Ads-ClientId
-	// We also send both header formats because Amazon Ads API is inconsistent in which one it accepts for client ID
-	req.Header["Amazon-Ads-ClientId"] = []string{aac.authClient.clientID}
-	req.Header["Amazon-Advertising-API-ClientId"] = []string{aac.authClient.clientID}
-
-	// Set custom headers
-	for key, value := range headers {
-		req.Header.Set(key, value)
-	}
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	defer func() {
-		if res != nil {
-			_ = res.Body.Close()
-		}
-	}()
-
-	// Body may have important information, worth forwarding
-	var resBody []byte = nil
-	var resBodyReadError error = nil
-	if res != nil {
-		resBody, resBodyReadError = io.ReadAll(res.Body)
-	}
-
-	if err != nil {
-		return resBody, err
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return resBody, errors.New(res.Status)
-	}
-
-	return resBody, resBodyReadError
+func (aac *AmazonAdsAPIClient) getAccessToken() string {
+	return aac.cfg.AuthClient.getAccessToken()
 }
 
 func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.ListProfilesOptions) ([]models.Profile, error) {
@@ -121,7 +86,7 @@ func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.
 
 	url := url2.URL{
 		Scheme: "https",
-		Host:   aac.regionURL,
+		Host:   aac.cfg.regionURL,
 		Path:   "v2/profiles",
 	}
 	if options != nil {
@@ -132,7 +97,26 @@ func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.
 		"Accept": "application/json",
 	}
 
-	bodyBytes, err := aac.doRequest(ctx, http.MethodGet, url.String(), nil, headers)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	aac.setRequestHeaders(req, headers)
+
+	res, err := aac.cfg.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, errors.New(res.Status)
+	}
+
+	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -146,143 +130,12 @@ func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.
 	return profiles, nil
 }
 
-func (aac *AmazonAdsAPIClient) GetCampaigns(ctx context.Context, profileID int64, options *models.ListCampaignsOptions) ([]models.Campaign, error) {
-	err := aac.setToken()
-	if err != nil {
-		return nil, err
-	}
+func (aac *AmazonAdsAPIClient) setRequestHeaders(req *http.Request, headers map[string]string) {
+	req.Header.Set("Authorization", "Bearer "+aac.getAccessToken())
+	req.Header["Amazon-Ads-ClientId"] = []string{aac.cfg.AuthClient.clientID}
+	req.Header["Amazon-Advertising-API-ClientId"] = []string{aac.cfg.AuthClient.clientID}
 
-	url := url2.URL{
-		Scheme: "https",
-		Host:   aac.regionURL,
-		Path:   "adsApi/v1/query/campaigns",
+	for key, value := range headers {
+		req.Header.Set(key, value)
 	}
-
-	// Build request body using the generic toJSONBodyOptions
-	var requestBody []byte
-	if options != nil {
-		bodyMap := options.ToJSON()
-		requestBody, err = json.Marshal(bodyMap)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		requestBody = nil
-	}
-
-	headers := map[string]string{
-		"Accept":                       "application/json",
-		"Content-Type":                 "application/json",
-		"Amazon-Advertising-API-Scope": strconv.FormatInt(profileID, 10),
-	}
-
-	bodyBytes, err := aac.doRequest(ctx, http.MethodPost, url.String(), requestBody, headers)
-	if err != nil {
-		return nil, err
-	}
-
-	// The API returns campaigns wrapped in a "campaigns" key
-	var response struct {
-		Campaigns []models.Campaign `json:"campaigns"`
-	}
-	err = json.Unmarshal(bodyBytes, &response)
-	if err != nil {
-		return nil, err
-	}
-
-	return response.Campaigns, nil
-}
-
-func (aac *AmazonAdsAPIClient) GetAdGroups(ctx context.Context, profileID int64, options *models.ListAdGroupsOptions) ([]models.AdGroup, error) {
-	err := aac.setToken()
-	if err != nil {
-		return nil, err
-	}
-
-	url := url2.URL{
-		Scheme: "https",
-		Host:   aac.regionURL,
-		Path:   "adsApi/v1/query/adGroups",
-	}
-
-	// Build request body using the generic toJSONBodyOptions
-	var requestBody []byte
-	if options != nil {
-		bodyMap := options.ToJSON()
-		requestBody, err = json.Marshal(bodyMap)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		requestBody = nil
-	}
-
-	headers := map[string]string{
-		"Accept":                       "application/json",
-		"Content-Type":                 "application/json",
-		"Amazon-Advertising-API-Scope": strconv.FormatInt(profileID, 10),
-	}
-
-	bodyBytes, err := aac.doRequest(ctx, http.MethodPost, url.String(), requestBody, headers)
-	if err != nil {
-		return nil, err
-	}
-
-	// The API returns ad groups wrapped in an "adGroups" key
-	var response struct {
-		AdGroups []models.AdGroup `json:"adGroups"`
-	}
-	err = json.Unmarshal(bodyBytes, &response)
-	if err != nil {
-		return nil, err
-	}
-
-	return response.AdGroups, nil
-}
-
-func (aac *AmazonAdsAPIClient) GetAds(ctx context.Context, profileID int64, options *models.ListAdsOptions) ([]models.Ad, error) {
-	err := aac.setToken()
-	if err != nil {
-		return nil, err
-	}
-
-	url := url2.URL{
-		Scheme: "https",
-		Host:   aac.regionURL,
-		Path:   "adsApi/v1/query/ads",
-	}
-
-	// Build request body using the generic toJSONBodyOptions
-	var requestBody []byte
-	if options != nil {
-		bodyMap := options.ToJSON()
-		requestBody, err = json.Marshal(bodyMap)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		requestBody = nil
-	}
-
-	headers := map[string]string{
-		"Accept":                       "application/json",
-		"Content-Type":                 "application/json",
-		"Amazon-Advertising-API-Scope": strconv.FormatInt(profileID, 10),
-	}
-
-	bodyBytes, err := aac.doRequest(ctx, http.MethodPost, url.String(), requestBody, headers)
-	if err != nil {
-		return nil, err
-	}
-
-	// The API returns ads wrapped in an "ads" key
-	var response struct {
-		Ads []models.Ad `json:"ads"`
-	}
-	err = json.Unmarshal(bodyBytes, &response)
-	if err != nil {
-		return nil, err
-	}
-
-	return response.Ads, nil
 }

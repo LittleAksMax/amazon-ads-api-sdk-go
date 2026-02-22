@@ -80,7 +80,10 @@ func main() {
 	}
 
 	// Use config to create Amazon Ads API client
-	client, err := sdk.NewAmazonAdsAPIClient(authClient, sdk.AmazonRegions.Europe)
+	client, err := sdk.NewAmazonAdsAPIClient(&sdk.Configuration{
+		AuthClient: authClient,
+		Region:     sdk.AmazonRegions.Europe,
+	})
 	if err != nil {
 		log.Fatalf("Error creating Amazon Ads API client: %v", err)
 	}
@@ -103,7 +106,7 @@ func main() {
 			},
 		}
 
-		camps, err := client.GetCampaigns(ctx, prof.ProfileID, campaignOptions)
+		camps, err := client.CampaignsService.GetCampaigns(ctx, prof.ProfileID, campaignOptions)
 		if err != nil {
 			log.Printf("Error fetching campaigns for profile %d: %v", prof.ProfileID, err)
 			continue
@@ -111,7 +114,7 @@ func main() {
 		log.Printf("Profile: %d -> %d campaigns\n", prof.ProfileID, len(camps))
 
 		for _, camp := range camps {
-			adgroups, err := client.GetAdGroups(ctx, prof.ProfileID, &models.ListAdGroupsOptions{
+			adgroups, err := client.AdGroupsService.GetAdGroups(ctx, prof.ProfileID, &models.ListAdGroupsOptions{
 				AdProductFilter: models.Filter{
 					Include: []string{models.AdProductFilterSP},
 				},
@@ -127,7 +130,7 @@ func main() {
 			}
 			log.Printf("Profile %d -> Campaign %s -> %d AdGroups\n", prof.ProfileID, camp.CampaignID, len(adgroups))
 			for _, adgroup := range adgroups {
-				ads, err := client.GetAds(ctx, prof.ProfileID, &models.ListAdsOptions{
+				ads, err := client.AdsService.GetAds(ctx, prof.ProfileID, &models.ListAdsOptions{
 					AdProductFilter: models.Filter{
 						Include: []string{models.AdProductFilterSP},
 					},

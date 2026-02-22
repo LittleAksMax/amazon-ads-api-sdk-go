@@ -17,6 +17,37 @@ func (o *ListAdGroupsOptions) ToJSON() map[string]interface{} {
 	return toJSONBodyOptions(o)
 }
 
+type UpdateAdGroupsOptions struct {
+	AdGroups []UpdateAdGroupOption `json:"adGroups"`
+}
+
+type UpdateAdGroupOption struct {
+	AdGroupID string `json:"adGroupId"`
+
+	Name  *string `json:"name"`
+	State *string `json:"state"`
+	Tags  []Tag   `json:"tags"`
+
+	DateTimeFields
+
+	MarketplaceFields
+
+	// AdGroup-specific fields
+	Bid                          *Bid                       `json:"bid"`
+	Budgets                      []Budget                   `json:"budgets"`
+	Optimization                 *AdGroupOptimization       `json:"optimization"`
+	Pacing                       *PacingSettings            `json:"pacing"`
+	MarketplaceConfigurations    []AdGroupMarketplaceConfig `json:"marketplaceConfigurations"`
+	AdvertisedProductCategoryIds []string                   `json:"advertisedProductCategoryIds"`
+	CreativeType                 *string                    `json:"creativeType"`
+	CreativeRotationType         *string                    `json:"creativeRotationType"`
+	InventoryType                *string                    `json:"inventoryType"`
+	PurchaseOrderNumber          *string                    `json:"purchaseOrderNumber"`
+	Fees                         []Fee                      `json:"fees"`
+	Frequencies                  []Frequency                `json:"frequencies"`
+	TargetingSettings            *TargetingSettings         `json:"targetingSettings"`
+}
+
 type AdGroup struct {
 	AdGroupID                    string                     `json:"adGroupId"`
 	GlobalAdGroupID              string                     `json:"globalAdGroupId"`
