@@ -1,20 +1,12 @@
 package models
 
-const (
-	AdProductFilterDSP = "AMAZON_DSP"
-	AdProductFilterSB  = "SPONSORED_BRANDS"
-	AdProductFilterSD  = "SPONSORED_DISPLAY"
-	AdProductFilterSP  = "SPONSORED_PRODUCTS"
-	AdProductFilterST  = "SPONSORED_TELEVISION"
-)
-
 type ListCampaignsOptions struct {
 	// Filtering
-	AdProductFilter   Filter  `json:"adProductFilter"`
-	CampaignIDFilter  *Filter `json:"campaignIdFilter"`
-	StateFilter       *Filter `json:"stateFilter"`
-	NameFilter        *Filter `json:"nameFilter"`
-	PortfolioIDFilter *Filter `json:"portfolioIdFilter"`
+	AdProductFilter   Filter[AdProduct] `json:"adProductFilter"`
+	CampaignIDFilter  *Filter[string]   `json:"campaignIdFilter"`
+	StateFilter       *Filter[State]    `json:"stateFilter"`
+	NameFilter        *Filter[string]   `json:"nameFilter"`
+	PortfolioIDFilter *Filter[string]   `json:"portfolioIdFilter"`
 
 	// Sorting
 	SortOptions // "campaignId", "campaignName", "createTime", "updateTime", "budget", "state"
@@ -26,29 +18,34 @@ func (o *ListCampaignsOptions) ToJSON() map[string]interface{} {
 	return toJSONBodyOptions(o)
 }
 
-// https://advertising.amazon.com/API/docs/en-us/amazon-ads/1-0/data-types/Campaign
 type Campaign struct {
-	CampaignID              string                 `json:"campaignId"`
-	Name                    string                 `json:"name"`
-	AdProduct               string                 `json:"adProduct"`
-	State                   string                 `json:"state"`
-	Status                  *CampaignStatus        `json:"status"`
-	Budgets                 []Budget               `json:"budgets"`
-	StartDateTime           string                 `json:"startDateTime"`
-	Optimizations           *CampaignOptimizations `json:"optimizations"`
-	AutoCreationSettings    *AutoCreationSettings  `json:"autoCreationSettings"`
-	AutoScaleGlobalCampaign string                 `json:"autoScaleGlobalCampaign"`
-	CreationDateTime        string                 `json:"creationDateTime"`
-	LastUpdatedDateTime     string                 `json:"lastUpdatedDateTime"`
-	MarketplaceScope        string                 `json:"marketplaceScope"`
-	Marketplaces            []string               `json:"marketplaces"`
-	Countries               []string               `json:"countries"`
-	Tags                    []string               `json:"tags"`
+	AdProduct                 AdProduct                   `json:"adProduct"`
+	AutoCreationSettings      *AutoCreationSettings       `json:"autoCreationSettings"`
+	AutoScaleGlobalCampaign   AutoScaleGlobalCampaign     `json:"autoScaleGlobalCampaign"`
+	BrandID                   string                      `json:"brandId"`
+	Budgets                   []Budget                    `json:"budgets"`
+	CampaignID                string                      `json:"campaignId"`
+	GlobalCampaignID          string                      `json:"globalCampaignId"`
+	PortfolioID               string                      `json:"portfolioId"`
+	Name                      string                      `json:"name"`
+	State                     State                       `json:"state"`
+	Status                    *CampaignStatus             `json:"status"`
+	StartDateTime             string                      `json:"startDateTime"`
+	EndDateTime               string                      `json:"endDateTime"`
+	Optimizations             *CampaignOptimizations      `json:"optimizations"`
+	CreationDateTime          string                      `json:"creationDateTime"`
+	LastUpdatedDateTime       string                      `json:"lastUpdatedDateTime"`
+	MarketplaceScope          MarketplaceScope            `json:"marketplaceScope"`
+	Marketplaces              []Marketplace               `json:"marketplaces"`
+	MarketplaceConfigurations []CampaignMarketplaceConfig `json:"marketplaceConfigurations"`
+	Countries                 []string                    `json:"countries"`
+	Tags                      []Tag                       `json:"tags"`
 }
 
 type CampaignStatus struct {
-	DeliveryStatus  string   `json:"deliveryStatus"`
-	DeliveryReasons []string `json:"deliveryReasons"`
+	DeliveryStatus      DeliveryStatus              `json:"deliveryStatus"`
+	DeliveryReasons     []DeliveryReason            `json:"deliveryReasons"`
+	MarketplaceSettings []MarketplaceDeliveryStatus `json:"marketplaceSettings"`
 }
 
 type CampaignOptimizations struct {
@@ -56,7 +53,7 @@ type CampaignOptimizations struct {
 }
 
 type BidSettings struct {
-	BidStrategy    string          `json:"bidStrategy"`
+	BidStrategy    BidStrategy     `json:"bidStrategy"`
 	BidAdjustments *BidAdjustments `json:"bidAdjustments"`
 }
 
@@ -65,10 +62,22 @@ type BidAdjustments struct {
 }
 
 type PlacementBidAdjustment struct {
-	Placement  string `json:"placement"`
-	Percentage int    `json:"percentage"`
+	Placement  Placement `json:"placement"`
+	Percentage int       `json:"percentage"`
 }
 
 type AutoCreationSettings struct {
 	AutoCreateTargets bool `json:"autoCreateTargets"`
+}
+
+type CampaignMarketplaceConfig struct {
+	CampaignID  string                              `json:"campaignId"`
+	Marketplace Marketplace                         `json:"marketplace"`
+	Overrides   *CampaignMarketplaceConfigOverrides `json:"overrides"`
+}
+
+type CampaignMarketplaceConfigOverrides struct {
+	Name  string `json:"name"`
+	State State  `json:"state"`
+	Tags  []Tag  `json:"tags"`
 }

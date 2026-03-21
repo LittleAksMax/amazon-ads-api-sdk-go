@@ -1,13 +1,7 @@
 package models
 
-const (
-	StateEnabled  = "ENABLED"
-	StateArchived = "ARCHIVED"
-	StatePaused   = "PAUSED"
-)
-
-type Filter struct {
-	Include []string `json:"include,omitempty"`
+type Filter[T any] struct {
+	Include []T `json:"include,omitempty"`
 }
 
 type PaginationOptions struct {
@@ -15,19 +9,26 @@ type PaginationOptions struct {
 	MaxResults int    `json:"maxResults"`
 }
 
+type SortOrderType string
+
+const (
+	SortOrderAsc  SortOrderType = "asc"
+	SortOrderDesc SortOrderType = "desc"
+)
+
 type SortOptions struct {
-	SortBy    string `json:"sortBy"`    // "campaignId", "campaignName", "createTime", "updateTime", "budget", "state"
-	SortOrder string `json:"sortOrder"` // "asc", "desc"
+	SortBy    string        `json:"sortBy"`
+	SortOrder SortOrderType `json:"sortOrder"`
 }
 
 type Budget struct {
-	BudgetType           string       `json:"budgetType"`
-	BudgetValue          *BudgetValue `json:"budgetValue"`
-	RecurrenceTimePeriod string       `json:"recurrenceTimePeriod"`
+	BudgetType           BudgetType           `json:"budgetType"`
+	BudgetValue          BudgetValue          `json:"budgetValue"`
+	RecurrenceTimePeriod RecurrenceTimePeriod `json:"recurrenceTimePeriod"`
 }
 
 type BudgetValue struct {
-	MonetaryBudgetValue *MonetaryBudgetValue `json:"monetaryBudgetValue"`
+	MonetaryBudgetValue MonetaryBudgetValue `json:"monetaryBudgetValue"`
 }
 
 type MonetaryBudgetValue struct {
@@ -47,9 +48,9 @@ type MonetaryBudgetMarketplaceSetting struct {
 }
 
 type MarketplaceDeliveryStatus struct {
-	Marketplace     string   `json:"marketplace"`
-	DeliveryStatus  string   `json:"deliveryStatus"`
-	DeliveryReasons []string `json:"deliveryReasons"`
+	Marketplace     Marketplace      `json:"marketplace"`
+	DeliveryStatus  DeliveryStatus   `json:"deliveryStatus"`
+	DeliveryReasons []DeliveryReason `json:"deliveryReasons"`
 }
 
 type Tag struct {
@@ -63,6 +64,6 @@ type DateTimeFields struct {
 }
 
 type MarketplaceFields struct {
-	MarketplaceScope *string  `json:"marketplaceScope"`
-	Marketplaces     []string `json:"marketplaces"`
+	MarketplaceScope *MarketplaceScope `json:"marketplaceScope"`
+	Marketplaces     []Marketplace     `json:"marketplaces"`
 }

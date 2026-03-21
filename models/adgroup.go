@@ -1,11 +1,11 @@
 package models
 
 type ListAdGroupsOptions struct {
-	AdProductFilter  Filter  `json:"adProductFilter"`
-	CampaignIDFilter *Filter `json:"campaignIdFilter"`
-	AdGroupIDFilter  *Filter `json:"adGroupIdFilter"`
-	StateFilter      *Filter `json:"stateFilter"`
-	NameFilter       *Filter `json:"nameFilter"`
+	AdProductFilter  Filter[AdProduct] `json:"adProductFilter"`
+	CampaignIDFilter *Filter[string]   `json:"campaignIdFilter"`
+	AdGroupIDFilter  *Filter[string]   `json:"adGroupIdFilter"`
+	StateFilter      *Filter[State]    `json:"stateFilter"`
+	NameFilter       *Filter[string]   `json:"nameFilter"`
 
 	// Sort by "adGroupId", "adGroupName", "createTime", "updateTime", "state"
 	SortOptions
@@ -53,8 +53,8 @@ type AdGroup struct {
 	GlobalAdGroupID              string                     `json:"globalAdGroupId"`
 	CampaignID                   string                     `json:"campaignId"`
 	Name                         string                     `json:"name"`
-	State                        string                     `json:"state"`
-	AdProduct                    string                     `json:"adProduct"`
+	State                        State                      `json:"state"`
+	AdProduct                    AdProduct                  `json:"adProduct"`
 	CreationDateTime             string                     `json:"creationDateTime"`
 	LastUpdatedDateTime          string                     `json:"lastUpdatedDateTime"`
 	StartDateTime                string                     `json:"startDateTime"`
@@ -64,14 +64,14 @@ type AdGroup struct {
 	Budgets                      []Budget                   `json:"budgets"`
 	Optimization                 *AdGroupOptimization       `json:"optimization"`
 	Pacing                       *PacingSettings            `json:"pacing"`
-	MarketplaceScope             string                     `json:"marketplaceScope"`
-	Marketplaces                 []string                   `json:"marketplaces"`
+	MarketplaceScope             MarketplaceScope           `json:"marketplaceScope"`
+	Marketplaces                 []Marketplace              `json:"marketplaces"`
 	MarketplaceConfigurations    []AdGroupMarketplaceConfig `json:"marketplaceConfigurations"`
 	Tags                         []Tag                      `json:"tags"`
 	AdvertisedProductCategoryIds []string                   `json:"advertisedProductCategoryIds"`
-	CreativeType                 string                     `json:"creativeType"`
-	CreativeRotationType         string                     `json:"creativeRotationType"`
-	InventoryType                string                     `json:"inventoryType"`
+	CreativeType                 CreativeType               `json:"creativeType"`
+	CreativeRotationType         CreativeRotationType       `json:"creativeRotationType"`
+	InventoryType                InventoryType              `json:"inventoryType"`
 	PurchaseOrderNumber          string                     `json:"purchaseOrderNumber"`
 	Fees                         []Fee                      `json:"fees"`
 	Frequencies                  []Frequency                `json:"frequencies"`
@@ -79,8 +79,8 @@ type AdGroup struct {
 }
 
 type AdGroupStatus struct {
-	DeliveryStatus      string                      `json:"deliveryStatus"`
-	DeliveryReasons     []string                    `json:"deliveryReasons"`
+	DeliveryStatus      DeliveryStatus              `json:"deliveryStatus"`
+	DeliveryReasons     []DeliveryReason            `json:"deliveryReasons"`
 	MarketplaceSettings []MarketplaceDeliveryStatus `json:"marketplaceSettings"`
 }
 
@@ -93,20 +93,20 @@ type Bid struct {
 }
 
 type BidMarketplaceSetting struct {
-	Marketplace  string  `json:"marketplace"`
-	DefaultBid   float64 `json:"defaultBid"`
-	CurrencyCode string  `json:"currencyCode"`
+	Marketplace  Marketplace `json:"marketplace"`
+	DefaultBid   float64     `json:"defaultBid"`
+	CurrencyCode string      `json:"currencyCode"`
 }
 
 type AdGroupOptimization struct {
-	BidStrategy    string          `json:"bidStrategy"`
+	BidStrategy    BidStrategy     `json:"bidStrategy"`
 	BudgetSettings *BudgetSettings `json:"budgetSettings"`
 	GoalSettings   *GoalSettings   `json:"goalSettings"`
 }
 
 type BudgetSettings struct {
-	BudgetAllocation   string  `json:"budgetAllocation"`
-	DailyMinSpendValue float64 `json:"dailyMinSpendValue"`
+	BudgetAllocation   BudgetAllocation `json:"budgetAllocation"`
+	DailyMinSpendValue float64          `json:"dailyMinSpendValue"`
 }
 
 type GoalSettings struct {
@@ -114,18 +114,18 @@ type GoalSettings struct {
 }
 
 type PacingSettings struct {
-	DeliveryProfile string `json:"deliveryProfile"`
+	DeliveryProfile DeliveryProfile `json:"deliveryProfile"`
 }
 
 type AdGroupMarketplaceConfig struct {
 	AdGroupID   string                             `json:"adGroupId"`
-	Marketplace string                             `json:"marketplace"`
+	Marketplace Marketplace                        `json:"marketplace"`
 	Overrides   *AdGroupMarketplaceConfigOverrides `json:"overrides"`
 }
 
 type AdGroupMarketplaceConfigOverrides struct {
 	Name  string `json:"name"`
-	State string `json:"state"`
+	State State  `json:"state"`
 	Tags  []Tag  `json:"tags"`
 }
 

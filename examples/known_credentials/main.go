@@ -76,7 +76,7 @@ func main() {
 	authConfig := sdk.NewAmazonAuthAPIConfig(clientID, clientSecret, redirectURI)
 	authClient, err := sdk.NewAmazonAuthClient(authConfig, sdk.AmazonRegions.Europe)
 	if err != nil {
-		log.Fatal("Error initializing Auth Client")
+		log.Fatal("Error initialising Auth Client")
 	}
 
 	// Use config to create Amazon Ads API client
@@ -93,61 +93,83 @@ func main() {
 	client.SetRefreshToken(refreshToken.Get())
 
 	profs, err := client.GetProfiles(ctx, nil)
-	log.Println(len(profs))
+	if err != nil {
+		log.Fatalf("Error fetching profiles: %v", err)
+	}
+	log.Printf("Total profiles: %d\n", len(profs))
 
-	for _, prof := range profs {
-		// Example: Filter for only Sponsored Products campaigns that are enabled
-		campaignOptions := &models.ListCampaignsOptions{
-			AdProductFilter: models.Filter{
-				Include: []string{models.AdProductFilterSP},
-			},
-			StateFilter: &models.Filter{
-				Include: []string{models.StateEnabled},
-			},
-		}
+	// Group profiles by seller ID
+	profilesBySeller := models.GroupProfilesBySellerID(profs)
+	log.Printf("Total sellers: %d\n", len(profilesBySeller))
 
-		camps, err := client.CampaignsService.GetCampaigns(ctx, prof.ProfileID, campaignOptions)
-		if err != nil {
-			log.Printf("Error fetching campaigns for profile %d: %v", prof.ProfileID, err)
-			continue
-		}
-		log.Printf("Profile: %d -> %d campaigns\n", prof.ProfileID, len(camps))
+	// Iterate through each seller
+	for sellerID, sellerProfiles := range profilesBySeller {
+		log.Printf("\n=== Seller ID: %s (%d profile(s)) ===\n", sellerID, len(sellerProfiles))
 
-		for _, camp := range camps {
-			adgroups, err := client.AdGroupsService.GetAdGroups(ctx, prof.ProfileID, &models.ListAdGroupsOptions{
-				AdProductFilter: models.Filter{
-					Include: []string{models.AdProductFilterSP},
+		// Iterate through each profile for this seller
+		for _, prof := range sellerProfiles {
+			log.Printf("\n  Profile %d (%s - %s):\n", prof.ProfileID, prof.CountryCode, prof.AccountInfo.Name)
+
+			// Example: Filter for only Sponsored Products campaigns that are enabled
+			campaignOptions := &models.ListCampaignsOptions{
+				AdProductFilter: models.Filter[models.AdProduct]{
+					Include: []models.AdProduct{models.AdProductSP},
 				},
-				CampaignIDFilter: &models.Filter{
-					Include: []string{camp.CampaignID},
+				StateFilter: &models.Filter[models.State]{
+					Include: []models.State{models.StateEnabled},
 				},
-				StateFilter: &models.Filter{
-					Include: []string{models.StateEnabled},
-				},
-			})
-			if err != nil {
-				log.Printf("Error fetching AdGroups for campaign %s/profile %d: %v", camp.CampaignID, prof.ProfileID, err)
 			}
-			log.Printf("Profile %d -> Campaign %s -> %d AdGroups\n", prof.ProfileID, camp.CampaignID, len(adgroups))
-			for _, adgroup := range adgroups {
-				ads, err := client.AdsService.GetAds(ctx, prof.ProfileID, &models.ListAdsOptions{
-					AdProductFilter: models.Filter{
-						Include: []string{models.AdProductFilterSP},
+
+			camps, err := client.CampaignsService.GetCampaigns(ctx, prof.ProfileID, campaignOptions)
+			if err != nil {
+				log.Printf("Error fetching campaigns for profile %d: %v", prof.ProfileID, err)
+				continue
+			}
+			log.Printf("-> %d campaigns\n", len(camps))
+
+			for _, camp := range camps {
+				if camp.AdProduct != models.AdProductSP || camp.State != models.StateEnabled || !camp.AutoCreationSettings.AutoCreateTargets {
+					continue
+				}
+
+				adgroups, err := client.AdGroupsService.GetAdGroups(ctx, prof.ProfileID, &models.ListAdGroupsOptions{
+					AdProductFilter: models.Filter[models.AdProduct]{
+						Include: []models.AdProduct{models.AdProductSP},
 					},
-					CampaignIDFilter: &models.Filter{
+					CampaignIDFilter: &models.Filter[string]{
 						Include: []string{camp.CampaignID},
 					},
-					AdGroupIDFilter: &models.Filter{
-						Include: []string{adgroup.AdGroupID},
-					},
-					StateFilter: &models.Filter{
-						Include: []string{models.StateEnabled},
+					StateFilter: &models.Filter[models.State]{
+						Include: []models.State{models.StateEnabled},
 					},
 				})
 				if err != nil {
-					log.Printf("Error fetching Ads for AdGroup %s/Campaign %s/profile %d: %v", adgroup.AdGroupID, camp.CampaignID, prof.ProfileID, err)
+					log.Printf("Error fetching AdGroups for campaign %s/profile %d: %v", camp.CampaignID, prof.ProfileID, err)
+					continue
 				}
-				log.Printf("Profile %d -> Campaign %s -> AdGroup %s -> %d Ads\n", prof.ProfileID, camp.CampaignID, adgroup.AdGroupID, len(ads))
+				log.Printf("Campaign %s -> %d AdGroups\n", camp.Name, len(adgroups))
+
+				for _, adgroup := range adgroups {
+					ads, err := client.AdsService.GetAds(ctx, prof.ProfileID, &models.ListAdsOptions{
+						AdProductFilter: models.Filter[models.AdProduct]{
+							Include: []models.AdProduct{models.AdProductSP},
+						},
+						CampaignIDFilter: &models.Filter[string]{
+							Include: []string{camp.CampaignID},
+						},
+						AdGroupIDFilter: &models.Filter[string]{
+							Include: []string{adgroup.AdGroupID},
+						},
+						StateFilter: &models.Filter[models.State]{
+							Include: []models.State{models.StateEnabled},
+						},
+					})
+					if err != nil {
+						log.Printf("Error fetching Ads for AdGroup %s/Campaign %s/profile %d: %v", adgroup.AdGroupID, camp.CampaignID, prof.ProfileID, err)
+						continue
+					}
+					log.Printf("AdGroup %s -> %d Ads\n", adgroup.Name, len(ads))
+				}
 			}
 		}
 	}

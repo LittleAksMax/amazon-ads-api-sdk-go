@@ -2,11 +2,11 @@ package models
 
 type ListAdsOptions struct {
 	// Filtering
-	AdProductFilter  Filter  `json:"adProductFilter"`
-	CampaignIDFilter *Filter `json:"campaignIdFilter"`
-	AdGroupIDFilter  *Filter `json:"adGroupIdFilter"`
-	AdIDFilter       *Filter `json:"adIdFilter"`
-	StateFilter      *Filter `json:"stateFilter"`
+	AdProductFilter  Filter[AdProduct] `json:"adProductFilter"`
+	CampaignIDFilter *Filter[string]   `json:"campaignIdFilter"`
+	AdGroupIDFilter  *Filter[string]   `json:"adGroupIdFilter"`
+	AdIDFilter       *Filter[string]   `json:"adIdFilter"`
+	StateFilter      *Filter[State]    `json:"stateFilter"`
 
 	// Sort by "adId", "createTime", "updateTime", "state"
 	SortOptions
@@ -25,23 +25,23 @@ type Ad struct {
 	CampaignID                string                     `json:"campaignId"`
 	AdGroupID                 string                     `json:"adGroupId"`
 	Name                      string                     `json:"name"`
-	State                     string                     `json:"state"`
-	AdProduct                 string                     `json:"adProduct"`
-	AdType                    string                     `json:"adType"`
+	State                     State                      `json:"state"`
+	AdProduct                 AdProduct                  `json:"adProduct"`
+	AdType                    AdType                     `json:"adType"`
 	CreationDateTime          string                     `json:"creationDateTime"`
 	LastUpdatedDateTime       string                     `json:"lastUpdatedDateTime"`
 	Status                    *AdStatus                  `json:"status"`
 	Creative                  *Creative                  `json:"creative"`
 	ActiveCreative            *Creative                  `json:"activeCreative"`
-	MarketplaceScope          string                     `json:"marketplaceScope"`
-	Marketplaces              []string                   `json:"marketplaces"`
+	MarketplaceScope          MarketplaceScope           `json:"marketplaceScope"`
+	Marketplaces              []Marketplace              `json:"marketplaces"`
 	MarketplaceConfigurations []MarketplaceConfiguration `json:"marketplaceConfigurations"`
 	Tags                      []Tag                      `json:"tags"`
 }
 
 type AdStatus struct {
-	DeliveryStatus      string                      `json:"deliveryStatus"`
-	DeliveryReasons     []string                    `json:"deliveryReasons"`
+	DeliveryStatus      DeliveryStatus              `json:"deliveryStatus"`
+	DeliveryReasons     []DeliveryReason            `json:"deliveryReasons"`
 	MarketplaceSettings []MarketplaceDeliveryStatus `json:"marketplaceSettings"`
 }
 
@@ -112,21 +112,21 @@ type Product struct {
 }
 
 type GlobalStoreSetting struct {
-	CatalogSourceMarketplace string `json:"catalogSourceMarketplace"`
+	CatalogSourceMarketplace Marketplace `json:"catalogSourceMarketplace"`
 }
 
 type MarketplaceSetting struct {
-	Marketplace string `json:"marketplace"`
-	AsinValue   string `json:"asinValue"`
+	Marketplace Marketplace `json:"marketplace"`
+	AsinValue   string      `json:"asinValue"`
 }
 
 type MarketplaceConfiguration struct {
 	AdID        string                      `json:"adId"`
-	Marketplace string                      `json:"marketplace"`
+	Marketplace Marketplace                 `json:"marketplace"`
 	Overrides   *MarketplaceConfigOverrides `json:"overrides"`
 }
 
 type MarketplaceConfigOverrides struct {
-	State string `json:"state"`
-	Tags  []Tag  `json:"tags"`
+	State State `json:"state"`
+	Tags  []Tag `json:"tags"`
 }
