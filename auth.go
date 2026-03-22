@@ -87,6 +87,70 @@ func (authClient *AmazonAPIAuthClient) refreshToken(token string) (*AmazonAPITok
 	return tokenResponse, nil
 }
 
+// generateRefreshToken exchanges an authorisation code for an access token and refresh token.
+// The code is obtained from the Login with Amazon (LWA) OAuth flow redirect.
+func (authClient *AmazonAPIAuthClient) generateRefreshToken(code string) (*AmazonAPITokenResponse, error) {
+	queryValues := url2.Values{
+		"client_id":     []string{authClient.clientID},
+		"client_secret": []string{authClient.clientSecret},
+		"code":          []string{code},
+		"redirect_uri":  []string{authClient.redirectURI},
+		"grant_type":    []string{"authorization_code"},
+	}
+
+	url := url2.URL{
+		Scheme:   "https",
+		Host:     authClient.regionURL,
+		Path:     "auth/o2/token",
+		RawQuery: queryValues.Encode(),
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	res, err := client.Do(req)
+	defer func(res *http.Response) {
+		if res != nil {
+			_ = res.Body.Close()
+		}
+	}(res)
+
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		log.Println(res.StatusCode, res.Body)
+		return nil, errors.New("got status code " + strconv.Itoa(res.StatusCode) + " when exchanging authorization code")
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	tokenResponse := &AmazonAPITokenResponse{}
+	err = json.Unmarshal(body, tokenResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokenResponse, nil
+}
+
+// ExchangeAuthorisationCode exchanges an authorisation code for tokens, stores them
+// on the auth client, and returns the token response so the caller can persist the
+// refresh token (e.g., in a database).
+func (authClient *AmazonAPIAuthClient) exchangeAuthorisationCode(code string) (*AmazonAPITokenResponse, error) {
+	tok, err := authClient.generateRefreshToken(code)
+	if err != nil {
+		return nil, err
+	}
+	authClient.setAccessCredentials(tok)
+	return tok, nil
+}
+
 // SetRefreshToken sets the refresh token
 func (authClient *AmazonAPIAuthClient) SetRefreshToken(refreshToken string) {
 	authClient.refreshTokenValue = refreshToken

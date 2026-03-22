@@ -62,6 +62,21 @@ func (aac *AmazonAdsAPIClient) SetRefreshToken(refreshToken string) {
 	aac.cfg.AuthClient.SetRefreshToken(refreshToken)
 }
 
+func (aac *AmazonAdsAPIClient) SetRegion(region string) error {
+	adsURL, ok := amazonAdsApiRegionToURLMap[region]
+	if !ok {
+		return errors.New("invalid region: " + region)
+	}
+	authURL, ok := amazonAuthApiRegionToURLMap[region]
+	if !ok {
+		return errors.New("invalid auth region: " + region)
+	}
+	aac.cfg.Region = region
+	aac.cfg.regionURL = adsURL
+	aac.cfg.AuthClient.regionURL = authURL
+	return nil
+}
+
 func (aac *AmazonAdsAPIClient) isAccessTokenValid() bool {
 	return aac.cfg.AuthClient.isAccessTokenValid()
 }
@@ -76,6 +91,13 @@ func (aac *AmazonAdsAPIClient) setToken() error {
 
 func (aac *AmazonAdsAPIClient) getAccessToken() string {
 	return aac.cfg.AuthClient.getAccessToken()
+}
+
+// ExchangeAuthorisationCode exchanges a Login with Amazon (LWA) authorisation code for
+// an access token and refresh token. The client is immediately ready for API calls after
+// this returns. The caller should persist the returned RefreshToken for future use.
+func (aac *AmazonAdsAPIClient) ExchangeAuthorisationCode(code string) (*AmazonAPITokenResponse, error) {
+	return aac.cfg.AuthClient.exchangeAuthorisationCode(code)
 }
 
 func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.ListProfilesOptions) ([]models.Profile, error) {

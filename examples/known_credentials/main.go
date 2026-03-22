@@ -58,6 +58,19 @@ func (rft *RefreshToken) Get() string {
 	return rft.refreshToken
 }
 
+// groupProfilesBySellerID bins a slice of profiles by their seller ID
+// Returns a map where keys are seller IDs and values are slices of profiles
+func groupProfilesBySellerID(profiles []models.Profile) map[string][]models.Profile {
+	grouped := make(map[string][]models.Profile)
+
+	for _, profile := range profiles {
+		sellerID := profile.GetSellerID()
+		grouped[sellerID] = append(grouped[sellerID], profile)
+	}
+
+	return grouped
+}
+
 func main() {
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -99,7 +112,7 @@ func main() {
 	log.Printf("Total profiles: %d\n", len(profs))
 
 	// Group profiles by seller ID
-	profilesBySeller := models.GroupProfilesBySellerID(profs)
+	profilesBySeller := groupProfilesBySellerID(profs)
 	log.Printf("Total sellers: %d\n", len(profilesBySeller))
 
 	// Iterate through each seller

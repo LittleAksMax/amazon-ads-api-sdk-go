@@ -57,16 +57,3 @@ func (lpo *ListProfilesOptions) ToQuery() url2.Values {
 func (p *Profile) GetSellerID() string {
 	return p.AccountInfo.ID
 }
-
-// GroupProfilesBySellerID bins a slice of profiles by their seller ID
-// Returns a map where keys are seller IDs and values are slices of profiles
-func GroupProfilesBySellerID(profiles []Profile) map[string][]Profile {
-	grouped := make(map[string][]Profile)
-	
-	for _, profile := range profiles {
-		sellerID := profile.GetSellerID()
-		grouped[sellerID] = append(grouped[sellerID], profile)
-	}
-
-	return grouped
-}
