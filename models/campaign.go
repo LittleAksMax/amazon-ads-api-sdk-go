@@ -67,7 +67,8 @@ type PlacementBidAdjustment struct {
 }
 
 type AutoCreationSettings struct {
-	AutoCreateTargets bool `json:"autoCreateTargets"`
+	AutoCreateTargets  bool  `json:"autoCreateTargets"`
+	AutoManageCampaign *bool `json:"autoManageCampaign"`
 }
 
 type CampaignMarketplaceConfig struct {
