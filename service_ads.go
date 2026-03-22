@@ -1,59 +1,32 @@
 package amazon_ads_api_go_sdk
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/url"
-	"strconv"
 
 	"github.com/LittleAksMax/amazon-ads-api-sdk-go/models"
 )
 
 type AdsService service
 
-// GetAds queries ads with optional filtering and sorting
+// GetAds queries ads with optional filtering and sorting.
 func (s *AdsService) GetAds(ctx context.Context, profileID int64, options *models.ListAdsOptions) ([]models.Ad, error) {
 	err := s.client.setToken()
 	if err != nil {
 		return nil, err
 	}
 
-	u := url.URL{
-		Scheme: "https",
-		Host:   s.client.cfg.regionURL,
-		Path:   "adsApi/v1/query/ads",
-	}
-
-	// Build request body
-	var requestBody []byte
+	var body interface{}
 	if options != nil {
-		bodyMap := options.ToJSON()
-		requestBody, err = json.Marshal(bodyMap)
-		if err != nil {
-			return nil, err
-		}
+		body = options.ToJSON()
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), nil)
+	req, err := buildJSONRequest(ctx, http.MethodPost, s.client.cfg.regionURL, "adsApi/v1/query/ads", profileID, body, s.client)
 	if err != nil {
 		return nil, err
 	}
-
-	if requestBody != nil {
-		req.ContentLength = int64(len(requestBody))
-		req.Body = io.NopCloser(bytes.NewReader(requestBody))
-	}
-
-	headers := map[string]string{
-		"Accept":                       "application/json",
-		"Content-Type":                 "application/json",
-		"Amazon-Advertising-API-Scope": strconv.FormatInt(profileID, 10),
-	}
-
-	s.client.setRequestHeaders(req, headers)
 
 	res, err := s.client.cfg.HTTPClient.Do(req)
 	if err != nil {

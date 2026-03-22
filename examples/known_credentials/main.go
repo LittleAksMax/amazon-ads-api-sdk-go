@@ -133,7 +133,7 @@ func main() {
 				},
 			}
 
-			camps, err := client.CampaignsService.GetCampaigns(ctx, prof.ProfileID, campaignOptions)
+			camps, err := client.CampaignsService.GetCampaigns(prof.ProfileID, campaignOptions).Collect(ctx)
 			if err != nil {
 				log.Printf("Error fetching campaigns for profile %d: %v", prof.ProfileID, err)
 				continue
@@ -145,7 +145,7 @@ func main() {
 					continue
 				}
 
-				adgroups, err := client.AdGroupsService.GetAdGroups(ctx, prof.ProfileID, &models.ListAdGroupsOptions{
+				adgroups, err := client.AdGroupsService.GetAdGroups(prof.ProfileID, &models.ListAdGroupsOptions{
 					AdProductFilter: models.Filter[models.AdProduct]{
 						Include: []models.AdProduct{models.AdProductSP},
 					},
@@ -155,7 +155,7 @@ func main() {
 					StateFilter: &models.Filter[models.State]{
 						Include: []models.State{models.StateEnabled},
 					},
-				})
+				}).Collect(ctx)
 				if err != nil {
 					log.Printf("Error fetching AdGroups for campaign %s/profile %d: %v", camp.CampaignID, prof.ProfileID, err)
 					continue
