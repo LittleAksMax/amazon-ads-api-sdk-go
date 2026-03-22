@@ -16,6 +16,11 @@ type AdsService service
 
 // GetAds queries ads with optional filtering and sorting
 func (s *AdsService) GetAds(ctx context.Context, profileID int64, options *models.ListAdsOptions) ([]models.Ad, error) {
+	err := s.client.setToken()
+	if err != nil {
+		return nil, err
+	}
+
 	u := url.URL{
 		Scheme: "https",
 		Host:   s.client.cfg.regionURL,
@@ -24,7 +29,6 @@ func (s *AdsService) GetAds(ctx context.Context, profileID int64, options *model
 
 	// Build request body
 	var requestBody []byte
-	var err error
 	if options != nil {
 		bodyMap := options.ToJSON()
 		requestBody, err = json.Marshal(bodyMap)

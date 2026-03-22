@@ -16,6 +16,11 @@ type AdGroupsService service
 
 // GetAdGroups queries ad groups with optional filtering and sorting
 func (s *AdGroupsService) GetAdGroups(ctx context.Context, profileID int64, options *models.ListAdGroupsOptions) ([]models.AdGroup, error) {
+	err := s.client.setToken()
+	if err != nil {
+		return nil, err
+	}
+
 	u := url.URL{
 		Scheme: "https",
 		Host:   s.client.cfg.regionURL,
@@ -24,7 +29,6 @@ func (s *AdGroupsService) GetAdGroups(ctx context.Context, profileID int64, opti
 
 	// Build request body
 	var requestBody []byte
-	var err error
 	if options != nil {
 		bodyMap := options.ToJSON()
 		requestBody, err = json.Marshal(bodyMap)
@@ -81,6 +85,11 @@ func (s *AdGroupsService) GetAdGroups(ctx context.Context, profileID int64, opti
 
 // UpdateAdGroups updates ad groups with specified properties
 func (s *AdGroupsService) UpdateAdGroups(ctx context.Context, profileID int64, options *models.UpdateAdGroupsOptions) ([]models.AdGroup, error) {
+	err := s.client.setToken()
+	if err != nil {
+		return nil, err
+	}
+
 	u := url.URL{
 		Scheme: "https",
 		Host:   s.client.cfg.regionURL,

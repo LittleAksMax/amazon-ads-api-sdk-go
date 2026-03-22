@@ -16,6 +16,11 @@ type CampaignsService service
 
 // GetCampaigns queries campaigns with optional filtering and sorting
 func (s *CampaignsService) GetCampaigns(ctx context.Context, profileID int64, options *models.ListCampaignsOptions) ([]models.Campaign, error) {
+	err := s.client.setToken()
+	if err != nil {
+		return nil, err
+	}
+
 	u := url.URL{
 		Scheme: "https",
 		Host:   s.client.cfg.regionURL,
@@ -24,7 +29,6 @@ func (s *CampaignsService) GetCampaigns(ctx context.Context, profileID int64, op
 
 	// Build request body
 	var requestBody []byte
-	var err error
 	if options != nil {
 		bodyMap := options.ToJSON()
 		requestBody, err = json.Marshal(bodyMap)
