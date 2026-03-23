@@ -20,6 +20,7 @@ type AmazonAdsAPIClient struct {
 	CampaignsService *CampaignsService
 	AdGroupsService  *AdGroupsService
 	AdsService       *AdsService
+	TargetsService   *TargetsService
 }
 
 type service struct {
@@ -54,6 +55,7 @@ func NewAmazonAdsAPIClient(cfg *Configuration) (*AmazonAdsAPIClient, error) {
 	c.CampaignsService = (*CampaignsService)(&c.common)
 	c.AdGroupsService = (*AdGroupsService)(&c.common)
 	c.AdsService = (*AdsService)(&c.common)
+	c.TargetsService = (*TargetsService)(&c.common)
 
 	return c, nil
 }

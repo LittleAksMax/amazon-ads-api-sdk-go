@@ -14,16 +14,21 @@ import (
 type APIError struct {
 	Status     string
 	StatusCode int
+	Body       string
 }
 
 func (e *APIError) Error() string {
+	if e.Body != "" {
+		return e.Status + ": " + e.Body
+	}
 	return e.Status
 }
 
-func newAPIError(status string, statusCode int) *APIError {
+func newAPIError(status string, statusCode int, body string) *APIError {
 	return &APIError{
 		Status:     status,
 		StatusCode: statusCode,
+		Body:       body,
 	}
 }
 
@@ -105,4 +110,35 @@ func buildJSONRequest(ctx context.Context, method string, baseURL string, path s
 	client.setRequestHeaders(req, headers)
 
 	return req, nil
+}
+
+// doUpdateRequest performs a PUT request with JSON body, handling token refresh, error responses,
+// and response body reading. Returns the raw response body bytes for the caller to unmarshal.
+func doUpdateRequest(ctx context.Context, client *AmazonAdsAPIClient, path string, profileID int64, body interface{}) ([]byte, error) {
+	err := client.setToken()
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := buildJSONRequest(ctx, http.MethodPut, client.cfg.regionURL, path, profileID, body, client)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := client.cfg.HTTPClient.Do(req)
+	defer func() {
+		if res != nil {
+			_ = res.Body.Close()
+		}
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		errBody, _ := io.ReadAll(res.Body)
+		return nil, newAPIError(res.Status, res.StatusCode, string(errBody))
+	}
+
+	return io.ReadAll(res.Body)
 }

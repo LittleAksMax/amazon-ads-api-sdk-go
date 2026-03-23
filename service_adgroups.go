@@ -3,7 +3,6 @@ package amazon_ads_api_go_sdk
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 
 	"github.com/LittleAksMax/amazon-ads-api-sdk-go/models"
@@ -27,31 +26,7 @@ func (s *AdGroupsService) GetAdGroups(profileID int64, options *models.ListAdGro
 
 // UpdateAdGroups updates ad groups with specified properties
 func (s *AdGroupsService) UpdateAdGroups(ctx context.Context, profileID int64, options *models.UpdateAdGroupsOptions) ([]models.AdGroup, error) {
-	err := s.client.setToken()
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := buildJSONRequest(ctx, http.MethodPut, s.client.cfg.regionURL, "adsApi/v1/adGroups", profileID, options, s.client)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := s.client.cfg.HTTPClient.Do(req)
-	defer func() {
-		if res != nil {
-			_ = res.Body.Close()
-		}
-	}()
-	if err != nil {
-		return nil, err
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return nil, newAPIError(res.Status, res.StatusCode)
-	}
-
-	bodyBytes, err := io.ReadAll(res.Body)
+	bodyBytes, err := doUpdateRequest(ctx, s.client, "adsApi/v1/adGroups", profileID, options)
 	if err != nil {
 		return nil, err
 	}

@@ -37,7 +37,8 @@ func (s *AdsService) GetAds(ctx context.Context, profileID int64, options *model
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, newAPIError(res.Status, res.StatusCode)
+		errBody, _ := io.ReadAll(res.Body)
+		return nil, newAPIError(res.Status, res.StatusCode, string(errBody))
 	}
 
 	bodyBytes, err := io.ReadAll(res.Body)

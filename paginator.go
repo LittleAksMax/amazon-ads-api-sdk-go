@@ -59,7 +59,8 @@ func (p *Paginator[T]) Next(ctx context.Context) ([]T, error) {
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, newAPIError(res.Status, res.StatusCode)
+		errBody, _ := io.ReadAll(res.Body)
+		return nil, newAPIError(res.Status, res.StatusCode, string(errBody))
 	}
 
 	bodyBytes, err := io.ReadAll(res.Body)
