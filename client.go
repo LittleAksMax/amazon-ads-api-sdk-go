@@ -155,7 +155,8 @@ func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.
 }
 
 func (aac *AmazonAdsAPIClient) setRequestHeaders(req *http.Request, headers map[string]string) {
-	req.Header.Set("Authorization", "Bearer "+aac.getAccessToken())
+	authHeader := "Bearer " + aac.getAccessToken()
+	req.Header.Set("Authorization", authHeader)
 	req.Header["Amazon-Ads-ClientId"] = []string{aac.cfg.AuthClient.clientID}
 	req.Header["Amazon-Advertising-API-ClientId"] = []string{aac.cfg.AuthClient.clientID}
 

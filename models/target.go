@@ -23,17 +23,10 @@ type UpdateTargetsOptions struct {
 }
 
 type UpdateTargetOption struct {
-	TargetID string `json:"targetId"`
-
-	Name  *string `json:"name"`
-	State *string `json:"state"`
-	Tags  []Tag   `json:"tags"`
-
-	MarketplaceFields
-
-	Bid                       *TargetBid                `json:"bid"`
-	Expression                []TargetExpression        `json:"expression"`
-	MarketplaceConfigurations []TargetMarketplaceConfig `json:"marketplaceConfigurations"`
+	TargetID string     `json:"targetId"`
+	State    *string    `json:"state,omitempty"`
+	Bid      *TargetBid `json:"bid,omitempty"`
+	Tags     []Tag      `json:"tags,omitempty"`
 }
 
 // https://advertising.amazon.com/API/docs/en-us/amazon-ads/1-0/data-types/Target
@@ -54,6 +47,7 @@ type Target struct {
 	MarketplaceScope          MarketplaceScope          `json:"marketplaceScope"`
 	Marketplaces              []Marketplace             `json:"marketplaces"`
 	MarketplaceConfigurations []TargetMarketplaceConfig `json:"marketplaceConfigurations"`
+	TargetDetails             TargetDetails             `json:"targetDetails"`
 	Tags                      []Tag                     `json:"tags"`
 }
 
@@ -89,4 +83,23 @@ type TargetMarketplaceConfig struct {
 type TargetMarketplaceConfigOverrides struct {
 	State State `json:"state"`
 	Tags  []Tag `json:"tags"`
+}
+
+type UpdateTargetsResponse struct {
+	Success []UpdateTargetSuccess `json:"success"`
+	Error   []UpdateTargetError   `json:"error"`
+}
+
+type UpdateTargetSuccess struct {
+	Target Target `json:"target"`
+	Index  int    `json:"index"`
+}
+
+type UpdateTargetError struct {
+	Errors []struct {
+		Code          string  `json:"code"`
+		FieldLocation *string `json:"fieldLocation,omitempty"`
+		Message       string  `json:"message"`
+	} `json:"errors"`
+	Index int `json:"index"`
 }

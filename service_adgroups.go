@@ -25,19 +25,17 @@ func (s *AdGroupsService) GetAdGroups(profileID int64, options *models.ListAdGro
 }
 
 // UpdateAdGroups updates ad groups with specified properties
-func (s *AdGroupsService) UpdateAdGroups(ctx context.Context, profileID int64, options *models.UpdateAdGroupsOptions) ([]models.AdGroup, error) {
-	bodyBytes, err := doUpdateRequest(ctx, s.client, "adsApi/v1/adGroups", profileID, options)
+func (s *AdGroupsService) UpdateAdGroups(ctx context.Context, profileID int64, options *models.UpdateAdGroupsOptions) (*models.UpdateAdGroupsResponse, error) {
+	bodyBytes, err := doUpdateRequest(ctx, s.client, "adsApi/v1/update/adGroups", profileID, options)
 	if err != nil {
 		return nil, err
 	}
 
-	var response struct {
-		AdGroups []models.AdGroup `json:"adGroups"`
-	}
+	var response models.UpdateAdGroupsResponse
 	err = json.Unmarshal(bodyBytes, &response)
 	if err != nil {
 		return nil, err
 	}
 
-	return response.AdGroups, nil
+	return &response, nil
 }

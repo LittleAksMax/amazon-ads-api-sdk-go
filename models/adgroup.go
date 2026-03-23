@@ -24,28 +24,13 @@ type UpdateAdGroupsOptions struct {
 type UpdateAdGroupOption struct {
 	AdGroupID string `json:"adGroupId"`
 
-	Name  *string `json:"name"`
-	State *string `json:"state"`
-	Tags  []Tag   `json:"tags"`
-
-	DateTimeFields
-
-	MarketplaceFields
-
-	// AdGroup-specific fields
-	Bid                          *Bid                       `json:"bid"`
-	Budgets                      []Budget                   `json:"budgets"`
-	Optimization                 *AdGroupOptimization       `json:"optimization"`
-	Pacing                       *PacingSettings            `json:"pacing"`
-	MarketplaceConfigurations    []AdGroupMarketplaceConfig `json:"marketplaceConfigurations"`
-	AdvertisedProductCategoryIds []string                   `json:"advertisedProductCategoryIds"`
-	CreativeType                 *string                    `json:"creativeType"`
-	CreativeRotationType         *string                    `json:"creativeRotationType"`
-	InventoryType                *string                    `json:"inventoryType"`
-	PurchaseOrderNumber          *string                    `json:"purchaseOrderNumber"`
-	Fees                         []Fee                      `json:"fees"`
-	Frequencies                  []Frequency                `json:"frequencies"`
-	TargetingSettings            *TargetingSettings         `json:"targetingSettings"`
+	Name                      *string                    `json:"name,omitempty"`
+	State                     *string                    `json:"state,omitempty"`
+	Tags                      []Tag                      `json:"tags,omitempty"`
+	Bid                       *Bid                       `json:"bid,omitempty"`
+	MarketplaceScope          *MarketplaceScope          `json:"marketplaceScope,omitempty"`
+	Marketplaces              []Marketplace              `json:"marketplaces,omitempty"`
+	MarketplaceConfigurations []AdGroupMarketplaceConfig `json:"marketplaceConfigurations,omitempty"`
 }
 
 type AdGroup struct {
@@ -161,4 +146,23 @@ type TargetingSettings struct {
 type AmazonViewability struct {
 	ViewabilityTier                string `json:"viewabilityTier"`
 	IncludeUnmeasurableImpressions bool   `json:"includeUnmeasurableImpressions"`
+}
+
+type UpdateAdGroupsResponse struct {
+	Success []UpdateAdGroupSuccess `json:"success"`
+	Error   []UpdateAdGroupError   `json:"error"`
+}
+
+type UpdateAdGroupSuccess struct {
+	AdGroup AdGroup `json:"adGroup"`
+	Index   int     `json:"index"`
+}
+
+type UpdateAdGroupError struct {
+	Errors []struct {
+		Code          string  `json:"code"`
+		FieldLocation *string `json:"fieldLocation,omitempty"`
+		Message       string  `json:"message"`
+	} `json:"errors"`
+	Index int `json:"index"`
 }

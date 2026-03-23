@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -120,7 +121,11 @@ func doUpdateRequest(ctx context.Context, client *AmazonAdsAPIClient, path strin
 		return nil, err
 	}
 
-	req, err := buildJSONRequest(ctx, http.MethodPut, client.cfg.regionURL, path, profileID, body, client)
+	if client.getAccessToken() == "" {
+		return nil, errors.New("access token is empty after refresh")
+	}
+
+	req, err := buildJSONRequest(ctx, http.MethodPost, client.cfg.regionURL, path, profileID, body, client)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +140,8 @@ func doUpdateRequest(ctx context.Context, client *AmazonAdsAPIClient, path strin
 		return nil, err
 	}
 
-	if res.StatusCode != http.StatusOK {
+	// Successfully requests have status codes 2xx
+	if res.StatusCode/100 != 2 {
 		errBody, _ := io.ReadAll(res.Body)
 		return nil, newAPIError(res.Status, res.StatusCode, string(errBody))
 	}

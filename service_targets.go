@@ -25,19 +25,17 @@ func (s *TargetsService) GetTargets(profileID int64, options *models.ListTargets
 }
 
 // UpdateTargets updates targets with specified properties.
-func (s *TargetsService) UpdateTargets(ctx context.Context, profileID int64, options *models.UpdateTargetsOptions) ([]models.Target, error) {
-	bodyBytes, err := doUpdateRequest(ctx, s.client, "adsApi/v1/targets", profileID, options)
+func (s *TargetsService) UpdateTargets(ctx context.Context, profileID int64, options *models.UpdateTargetsOptions) (*models.UpdateTargetsResponse, error) {
+	bodyBytes, err := doUpdateRequest(ctx, s.client, "/adsApi/v1/update/targets", profileID, options)
 	if err != nil {
 		return nil, err
 	}
 
-	var response struct {
-		Targets []models.Target `json:"targets"`
-	}
+	var response models.UpdateTargetsResponse
 	err = json.Unmarshal(bodyBytes, &response)
 	if err != nil {
 		return nil, err
 	}
 
-	return response.Targets, nil
+	return &response, nil
 }
