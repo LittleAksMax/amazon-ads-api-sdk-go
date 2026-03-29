@@ -13,12 +13,12 @@ type AdGroupsService service
 // GetAdGroups returns a Paginator that lazily fetches ad groups page by page.
 func (s *AdGroupsService) GetAdGroups(profileID int64, options *models.ListAdGroupsOptions) *Paginator[models.AdGroup] {
 	fetch := func(ctx context.Context, nextToken string) (*http.Response, error) {
-		req, err := buildPaginatedPostRequest(ctx, s.client.cfg.regionURL, "adsApi/v1/query/adGroups", profileID, options, nextToken, s.client)
+		req, err := buildPaginatedPostRequest(ctx, s.client.regionURL(), "adsApi/v1/query/adGroups", profileID, options, nextToken, s.client)
 		if err != nil {
 			return nil, err
 		}
 
-		return s.client.cfg.HTTPClient.Do(req)
+		return s.client.httpClient().Do(req)
 	}
 
 	return NewPaginator[models.AdGroup](s.client, fetch, newJSONParser[models.AdGroup]("adGroups"))

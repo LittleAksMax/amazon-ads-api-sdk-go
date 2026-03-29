@@ -13,12 +13,12 @@ type TargetsService service
 // GetTargets returns a Paginator that lazily fetches targets page by page.
 func (s *TargetsService) GetTargets(profileID int64, options *models.ListTargetsOptions) *Paginator[models.Target] {
 	fetch := func(ctx context.Context, nextToken string) (*http.Response, error) {
-		req, err := buildPaginatedPostRequest(ctx, s.client.cfg.regionURL, "adsApi/v1/query/targets", profileID, options, nextToken, s.client)
+		req, err := buildPaginatedPostRequest(ctx, s.client.regionURL(), "adsApi/v1/query/targets", profileID, options, nextToken, s.client)
 		if err != nil {
 			return nil, err
 		}
 
-		return s.client.cfg.HTTPClient.Do(req)
+		return s.client.httpClient().Do(req)
 	}
 
 	return NewPaginator[models.Target](s.client, fetch, newJSONParser[models.Target]("targets"))

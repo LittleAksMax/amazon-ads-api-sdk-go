@@ -8,6 +8,7 @@ import (
 	"net/http"
 	url2 "net/url"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -15,13 +16,19 @@ type AmazonAuthAPIConfig struct {
 	clientID     string
 	clientSecret string
 	redirectURI  string
+	httpClient   *http.Client
 }
 
 type AmazonAPIAuthClient struct {
+	clientID     string
+	clientSecret string
+	redirectURI  string
+
+	mu        sync.RWMutex
+	refreshMu sync.Mutex
+
+	httpClient        *http.Client
 	regionURL         string
-	clientID          string
-	clientSecret      string
-	redirectURI       string
 	accessToken       string
 	refreshTokenValue string
 	expiresAt         time.Time
@@ -35,10 +42,14 @@ type AmazonAPITokenResponse struct {
 }
 
 type Client interface {
-	refreshToken(refreshToken string) (*AmazonAPITokenResponse, error)
+	RefreshToken(refreshToken string) (*AmazonAPITokenResponse, error)
 }
 
-func (authClient *AmazonAPIAuthClient) refreshToken(token string) (*AmazonAPITokenResponse, error) {
+func (authClient *AmazonAPIAuthClient) RefreshToken(token string) (*AmazonAPITokenResponse, error) {
+	if token == "" {
+		return nil, errors.New("refresh token is empty")
+	}
+
 	queryValues := url2.Values{
 		"client_id":     []string{authClient.clientID},
 		"client_secret": []string{authClient.clientSecret},
@@ -48,7 +59,7 @@ func (authClient *AmazonAPIAuthClient) refreshToken(token string) (*AmazonAPITok
 
 	url := url2.URL{
 		Scheme:   "https",
-		Host:     authClient.regionURL,
+		Host:     authClient.getRegionURL(),
 		Path:     "auth/o2/token",
 		RawQuery: queryValues.Encode(),
 	}
@@ -59,8 +70,7 @@ func (authClient *AmazonAPIAuthClient) refreshToken(token string) (*AmazonAPITok
 	}
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{}
-	res, err := client.Do(req)
+	res, err := authClient.getHTTPClient().Do(req)
 	defer func(res *http.Response) {
 		if res != nil {
 			_ = res.Body.Close()
@@ -100,7 +110,7 @@ func (authClient *AmazonAPIAuthClient) generateRefreshToken(code string) (*Amazo
 
 	url := url2.URL{
 		Scheme:   "https",
-		Host:     authClient.regionURL,
+		Host:     authClient.getRegionURL(),
 		Path:     "auth/o2/token",
 		RawQuery: queryValues.Encode(),
 	}
@@ -111,8 +121,7 @@ func (authClient *AmazonAPIAuthClient) generateRefreshToken(code string) (*Amazo
 	}
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{}
-	res, err := client.Do(req)
+	res, err := authClient.getHTTPClient().Do(req)
 	defer func(res *http.Response) {
 		if res != nil {
 			_ = res.Body.Close()
@@ -142,62 +151,151 @@ func (authClient *AmazonAPIAuthClient) generateRefreshToken(code string) (*Amazo
 // ExchangeAuthorisationCode exchanges an authorisation code for tokens, stores them
 // on the auth client, and returns the token response so the caller can persist the
 // refresh token (e.g., in a database).
-func (authClient *AmazonAPIAuthClient) exchangeAuthorisationCode(code string) (*AmazonAPITokenResponse, error) {
+func (authClient *AmazonAPIAuthClient) ExchangeAuthorisationCode(code string) (*AmazonAPITokenResponse, error) {
 	tok, err := authClient.generateRefreshToken(code)
 	if err != nil {
 		return nil, err
 	}
-	authClient.setAccessCredentials(tok)
+	authClient.SetAccessCredentials(tok)
 	return tok, nil
 }
 
 // SetRefreshToken sets the refresh token
 func (authClient *AmazonAPIAuthClient) SetRefreshToken(refreshToken string) {
+	authClient.mu.Lock()
+	defer authClient.mu.Unlock()
+
 	authClient.refreshTokenValue = refreshToken
 }
 
-// isAccessTokenValid checks if the access token is still valid
-func (authClient *AmazonAPIAuthClient) isAccessTokenValid() bool {
+// IsAccessTokenValid checks if the access token is still valid
+func (authClient *AmazonAPIAuthClient) IsAccessTokenValid() bool {
+	authClient.mu.RLock()
+	defer authClient.mu.RUnlock()
+
 	return authClient.accessToken != "" && time.Now().UTC().Before(authClient.expiresAt.UTC())
 }
 
-// setAccessCredentials stores the token response
-func (authClient *AmazonAPIAuthClient) setAccessCredentials(tok *AmazonAPITokenResponse) {
+// SetAccessCredentials stores the token response
+func (authClient *AmazonAPIAuthClient) SetAccessCredentials(tok *AmazonAPITokenResponse) {
+	authClient.mu.Lock()
+	defer authClient.mu.Unlock()
+
 	authClient.accessToken = tok.AccessToken
-	authClient.refreshTokenValue = tok.RefreshToken
+	if tok.RefreshToken != "" {
+		authClient.refreshTokenValue = tok.RefreshToken
+	}
 	authClient.expiresAt = time.Now().Add(time.Duration(tok.ExpiresIn) * time.Second)
 }
 
-// setToken refreshes the access token if needed
-func (authClient *AmazonAPIAuthClient) setToken() error {
-	// We already have a valid token
-	if authClient.isAccessTokenValid() {
-		return nil
-	}
-
-	tok, err := authClient.refreshToken(authClient.refreshTokenValue)
-	if err != nil {
-		return err
-	}
-	authClient.setAccessCredentials(tok)
-
-	return nil
+// SetToken refreshes the access token if needed
+func (authClient *AmazonAPIAuthClient) SetToken() error {
+	_, err := authClient.EnsureAccessToken()
+	return err
 }
 
-// getAccessToken returns the current access token
-func (authClient *AmazonAPIAuthClient) getAccessToken() string {
+// EnsureAccessToken refreshes the access token if needed and returns the token used for requests.
+func (authClient *AmazonAPIAuthClient) EnsureAccessToken() (string, error) {
+	if token, ok := authClient.currentAccessToken(); ok {
+		return token, nil
+	}
+
+	authClient.refreshMu.Lock()
+	defer authClient.refreshMu.Unlock()
+
+	if token, ok := authClient.currentAccessToken(); ok {
+		return token, nil
+	}
+
+	tok, err := authClient.RefreshToken(authClient.getRefreshToken())
+	if err != nil {
+		return "", err
+	}
+	authClient.SetAccessCredentials(tok)
+
+	return authClient.GetAccessToken(), nil
+}
+
+// GetAccessToken returns the current access token
+func (authClient *AmazonAPIAuthClient) GetAccessToken() string {
+	authClient.mu.RLock()
+	defer authClient.mu.RUnlock()
+
 	return authClient.accessToken
 }
 
-func NewAmazonAuthClient(config *AmazonAuthAPIConfig, region string) (*AmazonAPIAuthClient, error) {
+func (authClient *AmazonAPIAuthClient) SetRegionURL(regionURL string) {
+	authClient.mu.Lock()
+	defer authClient.mu.Unlock()
+
+	authClient.regionURL = regionURL
+}
+
+// CloseIdleConnections closes any idle connections held by the auth HTTP client.
+func (authClient *AmazonAPIAuthClient) CloseIdleConnections() {
+	if httpClient := authClient.getHTTPClient(); httpClient != nil {
+		httpClient.CloseIdleConnections()
+	}
+}
+
+func (authClient *AmazonAPIAuthClient) setHTTPClient(client *http.Client) {
+	authClient.mu.Lock()
+	defer authClient.mu.Unlock()
+
+	authClient.httpClient = client
+}
+
+func (authClient *AmazonAPIAuthClient) getHTTPClient() *http.Client {
+	authClient.mu.RLock()
+	defer authClient.mu.RUnlock()
+
+	if authClient.httpClient == nil {
+		return http.DefaultClient
+	}
+
+	return authClient.httpClient
+}
+
+func (authClient *AmazonAPIAuthClient) getRegionURL() string {
+	authClient.mu.RLock()
+	defer authClient.mu.RUnlock()
+
+	return authClient.regionURL
+}
+
+func (authClient *AmazonAPIAuthClient) getRefreshToken() string {
+	authClient.mu.RLock()
+	defer authClient.mu.RUnlock()
+
+	return authClient.refreshTokenValue
+}
+
+func (authClient *AmazonAPIAuthClient) currentAccessToken() (string, bool) {
+	authClient.mu.RLock()
+	defer authClient.mu.RUnlock()
+
+	if authClient.accessToken == "" || !time.Now().UTC().Before(authClient.expiresAt.UTC()) {
+		return "", false
+	}
+
+	return authClient.accessToken, true
+}
+
+func NewAmazonAuthClient(cfg *AmazonAuthAPIConfig, region string) (*AmazonAPIAuthClient, error) {
 	regionURL, ok := amazonAuthApiRegionToURLMap[region]
 	if !ok {
 		return nil, errors.New("invalid region auth API: " + region)
 	}
+
+	if cfg.httpClient == nil {
+		cfg.httpClient = &http.Client{}
+	}
+
 	return &AmazonAPIAuthClient{
-		clientID:     config.clientID,
-		clientSecret: config.clientSecret,
-		redirectURI:  config.redirectURI,
+		clientID:     cfg.clientID,
+		clientSecret: cfg.clientSecret,
+		redirectURI:  cfg.redirectURI,
+		httpClient:   cfg.httpClient,
 		regionURL:    regionURL,
 	}, nil
 }

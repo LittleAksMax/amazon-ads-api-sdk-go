@@ -6,7 +6,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync"
 )
+
+var errNoMorePages = errors.New("no more pages")
 
 // PageFetcher builds and executes a request for a single page, given the nextToken.
 // It is called by the Paginator each time Next() is invoked.
@@ -20,6 +23,7 @@ type Paginator[T any] struct {
 	client    *AmazonAdsAPIClient
 	fetch     PageFetcher
 	parse     PageParser[T]
+	mu        sync.Mutex
 	nextToken string
 	done      bool
 }
@@ -35,14 +39,20 @@ func NewPaginator[T any](client *AmazonAdsAPIClient, fetch PageFetcher, parse Pa
 
 // HasNext returns true if there may be more pages to fetch.
 func (p *Paginator[T]) HasNext() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	return !p.done
 }
 
 // Next fetches the next page of results.
 // When there are no more pages, HasNext() will return false after this call.
 func (p *Paginator[T]) Next(ctx context.Context) ([]T, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if p.done {
-		return nil, errors.New("no more pages")
+		return nil, errNoMorePages
 	}
 
 	err := p.client.setToken()
@@ -85,14 +95,16 @@ func (p *Paginator[T]) Next(ctx context.Context) ([]T, error) {
 // Collect drains all remaining pages into a single slice.
 func (p *Paginator[T]) Collect(ctx context.Context) ([]T, error) {
 	var all []T
-	for p.HasNext() {
+	for {
 		page, err := p.Next(ctx)
 		if err != nil {
+			if errors.Is(err, errNoMorePages) {
+				return all, nil
+			}
 			return all, err
 		}
 		all = append(all, page...)
 	}
-	return all, nil
 }
 
 // newJSONParser creates a PageParser that unmarshals a JSON response where items

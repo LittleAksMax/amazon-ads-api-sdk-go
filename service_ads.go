@@ -23,12 +23,12 @@ func (s *AdsService) GetAds(ctx context.Context, profileID int64, options *model
 		body = options.ToJSON()
 	}
 
-	req, err := buildJSONRequest(ctx, http.MethodPost, s.client.cfg.regionURL, "adsApi/v1/query/ads", profileID, body, s.client)
+	req, err := buildJSONRequest(ctx, http.MethodPost, s.client.regionURL(), "adsApi/v1/query/ads", profileID, body, s.client)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := s.client.cfg.HTTPClient.Do(req)
+	res, err := s.client.httpClient().Do(req)
 	if err != nil {
 		return nil, err
 	}

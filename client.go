@@ -7,13 +7,15 @@ import (
 	"io"
 	"net/http"
 	url2 "net/url"
+	"sync"
 
 	"github.com/LittleAksMax/amazon-ads-api-sdk-go/models"
 )
 
 // AmazonAdsAPIClient manages communication with the Amazon Ads API
 type AmazonAdsAPIClient struct {
-	cfg    *Configuration
+	mu     sync.RWMutex
+	cfg    Configuration
 	common service // Reuse a single struct instead of allocating one for each service on the heap
 
 	// API Services
@@ -21,6 +23,7 @@ type AmazonAdsAPIClient struct {
 	AdGroupsService  *AdGroupsService
 	AdsService       *AdsService
 	TargetsService   *TargetsService
+	ReportsService   *ReportsService
 }
 
 type service struct {
@@ -36,19 +39,36 @@ type Configuration struct {
 
 // NewAmazonAdsAPIClient creates a new API client
 func NewAmazonAdsAPIClient(cfg *Configuration) (*AmazonAdsAPIClient, error) {
-	if cfg.HTTPClient == nil {
-		cfg.HTTPClient = &http.Client{}
+	if cfg == nil {
+		return nil, errors.New("configuration is nil")
+	}
+	if cfg.AuthClient == nil {
+		return nil, errors.New("auth client is nil")
+	}
+
+	httpClient := cfg.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{}
 	}
 
 	regionURL, ok := amazonAdsApiRegionToURLMap[cfg.Region]
 	if !ok {
 		return nil, errors.New("invalid region: " + cfg.Region)
 	}
+	authURL, ok := amazonAuthApiRegionToURLMap[cfg.Region]
+	if !ok {
+		return nil, errors.New("invalid auth region: " + cfg.Region)
+	}
 
 	c := &AmazonAdsAPIClient{
-		cfg: cfg,
+		cfg: Configuration{
+			AuthClient: cfg.AuthClient,
+			Region:     cfg.Region,
+			HTTPClient: httpClient,
+			regionURL:  regionURL,
+		},
 	}
-	c.cfg.regionURL = regionURL
+	c.cfg.AuthClient.SetRegionURL(authURL)
 	c.common.client = c
 
 	// Initialise API Services - cast common service to each service type
@@ -56,6 +76,7 @@ func NewAmazonAdsAPIClient(cfg *Configuration) (*AmazonAdsAPIClient, error) {
 	c.AdGroupsService = (*AdGroupsService)(&c.common)
 	c.AdsService = (*AdsService)(&c.common)
 	c.TargetsService = (*TargetsService)(&c.common)
+	c.ReportsService = (*ReportsService)(&c.common)
 
 	return c, nil
 }
@@ -73,33 +94,45 @@ func (aac *AmazonAdsAPIClient) SetRegion(region string) error {
 	if !ok {
 		return errors.New("invalid auth region: " + region)
 	}
+	aac.mu.Lock()
 	aac.cfg.Region = region
 	aac.cfg.regionURL = adsURL
-	aac.cfg.AuthClient.regionURL = authURL
+	aac.mu.Unlock()
+	aac.cfg.AuthClient.SetRegionURL(authURL)
 	return nil
 }
 
+// CloseIdleConnections closes any idle connections on the ads and auth HTTP clients.
+func (aac *AmazonAdsAPIClient) CloseIdleConnections() {
+	if httpClient := aac.httpClient(); httpClient != nil {
+		httpClient.CloseIdleConnections()
+	}
+
+	if authClient := aac.cfg.AuthClient; authClient != nil {
+		authClient.CloseIdleConnections()
+	}
+}
+
 func (aac *AmazonAdsAPIClient) isAccessTokenValid() bool {
-	return aac.cfg.AuthClient.isAccessTokenValid()
+	return aac.cfg.AuthClient.IsAccessTokenValid()
 }
 
 func (aac *AmazonAdsAPIClient) setAccessCredentials(tok *AmazonAPITokenResponse) {
-	aac.cfg.AuthClient.setAccessCredentials(tok)
+	aac.cfg.AuthClient.SetAccessCredentials(tok)
 }
 
 func (aac *AmazonAdsAPIClient) setToken() error {
-	return aac.cfg.AuthClient.setToken()
+	return aac.cfg.AuthClient.SetToken()
 }
 
 func (aac *AmazonAdsAPIClient) getAccessToken() string {
-	return aac.cfg.AuthClient.getAccessToken()
+	return aac.cfg.AuthClient.GetAccessToken()
 }
 
-// ExchangeAuthorisationCode exchanges a Login with Amazon (LWA) authorisation code for
-// an access token and refresh token. The client is immediately ready for API calls after
-// this returns. The caller should persist the returned RefreshToken for future use.
+// ExchangeAuthorisationCode exchanges an LwA authorisation code for
+// an access token and refresh token
 func (aac *AmazonAdsAPIClient) ExchangeAuthorisationCode(code string) (*AmazonAPITokenResponse, error) {
-	return aac.cfg.AuthClient.exchangeAuthorisationCode(code)
+	return aac.cfg.AuthClient.ExchangeAuthorisationCode(code)
 }
 
 func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.ListProfilesOptions) ([]models.Profile, error) {
@@ -110,7 +143,7 @@ func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.
 
 	url := url2.URL{
 		Scheme: "https",
-		Host:   aac.cfg.regionURL,
+		Host:   aac.regionURL(),
 		Path:   "v2/profiles",
 	}
 	if options != nil {
@@ -128,7 +161,7 @@ func (aac *AmazonAdsAPIClient) GetProfiles(ctx context.Context, options *models.
 
 	aac.setRequestHeaders(req, headers)
 
-	res, err := aac.cfg.HTTPClient.Do(req)
+	res, err := aac.httpClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -163,4 +196,15 @@ func (aac *AmazonAdsAPIClient) setRequestHeaders(req *http.Request, headers map[
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
+}
+
+func (aac *AmazonAdsAPIClient) regionURL() string {
+	aac.mu.RLock()
+	defer aac.mu.RUnlock()
+
+	return aac.cfg.regionURL
+}
+
+func (aac *AmazonAdsAPIClient) httpClient() *http.Client {
+	return aac.cfg.HTTPClient
 }

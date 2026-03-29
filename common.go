@@ -125,12 +125,12 @@ func doUpdateRequest(ctx context.Context, client *AmazonAdsAPIClient, path strin
 		return nil, errors.New("access token is empty after refresh")
 	}
 
-	req, err := buildJSONRequest(ctx, http.MethodPost, client.cfg.regionURL, path, profileID, body, client)
+	req, err := buildJSONRequest(ctx, http.MethodPost, client.regionURL(), path, profileID, body, client)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := client.cfg.HTTPClient.Do(req)
+	res, err := client.httpClient().Do(req)
 	defer func() {
 		if res != nil {
 			_ = res.Body.Close()

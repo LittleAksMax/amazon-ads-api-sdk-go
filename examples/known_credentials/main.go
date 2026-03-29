@@ -71,6 +71,30 @@ func groupProfilesBySellerID(profiles []models.Profile) map[string][]models.Prof
 	return grouped
 }
 
+/*
+   "id": "126084255146712",
+   "name": "Batz Campaign",
+   "adgroups": [
+       {
+           "id": "274110797435919",
+           "name": "Batz ENI",
+           "default_bid": 0.14,
+           "currency_code": "GBP"
+       },
+       {
+           "id": "260455774859984",
+           "name": "Batz FC10",
+           "default_bid": 0.11,
+           "currency_code": "GBP"
+       },
+       {
+           "id": "78752635309966",
+           "name": "Batz OLGA",
+           "default_bid": 0.06,
+           "currency_code": "GBP"
+       },
+*/
+
 func main() {
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -149,6 +173,7 @@ func main() {
 					AdProductFilter: models.Filter[models.AdProduct]{
 						Include: []models.AdProduct{models.AdProductSP},
 					},
+
 					CampaignIDFilter: &models.Filter[string]{
 						Include: []string{camp.CampaignID},
 					},
