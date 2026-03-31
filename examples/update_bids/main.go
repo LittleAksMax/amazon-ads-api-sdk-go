@@ -140,7 +140,7 @@ func main() {
 
 	}
 
-	updateOpts := getUpdateOpts(targets, newBid)
+	updateOpts := getUpdateOpts(targets)
 	if len(*updateOpts) != 0 {
 		updatedTargets, err := client.TargetsService.UpdateTargets(ctx, profileID, &models.UpdateTargetsOptions{
 			Targets: *updateOpts,
@@ -165,7 +165,7 @@ func main() {
 	}
 }
 
-func getUpdateOpts(targets []models.Target, newBid float64) *[]models.UpdateTargetOption {
+func getUpdateOpts(targets []models.Target) *[]models.UpdateTargetOption {
 	updateTargets := make([]models.UpdateTargetOption, 0, len(targets))
 	for i, target := range targets {
 		if target.Bid == nil {

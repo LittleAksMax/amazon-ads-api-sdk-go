@@ -44,19 +44,26 @@ func main() {
 
 	client.SetRefreshToken(refreshToken)
 
-	request := models.NewSponsoredProductsTargetingReport(
-		"simple-sp-targeting-report",
-		time.Now().Add(-14*24*time.Hour),
-		time.Now(),
-		[]string{
-			"campaignId",
-			"adGroupId",
-			"targeting",
-			"impressions",
-			"clicks",
-			"cost",
+	request := &models.RequestReportOptions{
+		Name:      "simple-sp-targeting-report",
+		StartDate: models.FormatDate(time.Now().Add(-14 * 24 * time.Hour)),
+		EndDate:   models.FormatDate(time.Now()),
+		Configuration: models.ReportConfiguration{
+			AdProduct: models.AdProductSP,
+			GroupBy:   []models.ReportGroupBy{models.ReportGroupByTargeting},
+			Columns: []string{
+				"campaignId",
+				"adGroupId",
+				"targeting",
+				"impressions",
+				"clicks",
+				"cost",
+			},
+			ReportTypeID: models.ReportTypeSponsoredProductsCampaigns,
+			TimeUnit:     models.ReportTimeUnitSummary,
+			Format:       models.ReportFormatGZIPJSON,
 		},
-	)
+	}
 
 	report, err := client.ReportsService.RequestReport(ctx, profileID, request)
 	if err != nil {

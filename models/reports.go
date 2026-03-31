@@ -247,20 +247,8 @@ func NewReportFilter(field ReportFilterField, values ...string) ReportFilter {
 
 const requiredDateFormat = "2006-01-02"
 
-func NewSponsoredProductsTargetingReport(name string, startDate time.Time, endDate time.Time, columns []string) *RequestReportOptions {
-	return &RequestReportOptions{
-		Name:      name,
-		StartDate: startDate.Format(requiredDateFormat),
-		EndDate:   endDate.Format(requiredDateFormat),
-		Configuration: ReportConfiguration{
-			AdProduct:    AdProductSP,
-			GroupBy:      []ReportGroupBy{ReportGroupByTargeting},
-			Columns:      append([]string(nil), columns...),
-			ReportTypeID: ReportTypeSponsoredProductsTargeting,
-			TimeUnit:     ReportTimeUnitSummary,
-			Format:       ReportFormatGZIPJSON,
-		},
-	}
+func FormatDate(date time.Time) string {
+	return date.Format(requiredDateFormat)
 }
 
 /////////////////////////////////////
