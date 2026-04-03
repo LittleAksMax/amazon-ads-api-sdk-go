@@ -18,8 +18,6 @@ import (
 
 const reportingV3ContentType = "application/vnd.createasyncreportrequest.v3+json"
 
-// 148d8c91-a8c6-49c8-bc2f-7d4a0e24e8f4
-
 type ReportsService service
 
 type Report struct {

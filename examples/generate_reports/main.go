@@ -11,7 +11,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const profileID int64 = 867051359340884
+const profileID int64 = 123456789012345
 
 func main() {
 	err := godotenv.Load(".env")
